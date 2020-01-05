@@ -1,8 +1,6 @@
 /*
  * display.cpp
  *
- *  Created on: 12 рту. 2019 у.
- *      Author: Alex
  */
 
 #include "display.h"
@@ -116,31 +114,16 @@ static const uint8_t bmArrow[] = {
   0b11100000
 };
 
-/*
 static const uint8_t bmTiltActive[] = {
-  0b00001101,
-  0b00001110,
-  0b00001110,
-  0b00011100,
-  0b00011100,
-  0b00011000,
-  0b00111000,
-  0b00110000,
-  0b00110000,
-  0b01100000,
-  0b01000000
-};
-*/
-
-static const uint8_t bmTiltActive[] = {
-  0b00111100,
-  0b01111110,
-  0b11000011,
-  0b11011011,
-  0b11011011,
-  0b11000011,
-  0b01111110,
-  0b00111100
+  0b00000100, 0b00000000,
+  0b01000100, 0b01000000,
+  0b00101110, 0b10000000,
+  0b00011111, 0b00000000,
+  0b11111111, 0b11100000,
+  0b00011111, 0b00000000,
+  0b00101110, 0b10000000,
+  0b01000100, 0b01000000,
+  0b00000100, 0b00000000
 };
 
 static const uint8_t E[] = {
@@ -197,6 +180,8 @@ void DSPL::init(const u8g2_cb_t *rotation)  {
 //	u8g2_Setup_sh1106_128x64_noname_f(&u8g2, rotation, msg_cb, u8x8_gpio_and_delay_stm32);
 	u8g2_Setup_ssd1306_128x64_noname_f(&u8g2, rotation, msg_cb, u8x8_gpio_and_delay_stm32);
 //	u8g2_Setup_ssd1309_128x64_noname2_f(&u8g2, rotation, msg_cb, u8x8_gpio_and_delay_stm32);
+	saver_center[0] = d_width/2;
+	saver_center[1] = d_height/2;
 	begin();
 }
 
@@ -263,14 +248,27 @@ void DSPL::animateFan(uint8_t indx) {
 	U8G2::sendBuffer();
 }
 
-void DSPL::mainShow(uint16_t t_set, uint16_t t_cur, int16_t  t_amb, uint8_t p_applied, bool is_celsius,
-		bool tip_calibrated,uint8_t fan_index, bool tilt_iron_used) {
+/*
+ * Main temperature display used in standby or working mode to show IRON or Hot Air Gun status
+ * Parameters:
+ * t_set			- The preset temperature, to be kept in main working mode
+ * t_cur			- Current temperature of IRON or Hot Air Gun
+ * t_amb			- The ambient temperature
+ * p_applied		- The applied power to the device, percent
+ * is_celsius		- The human readable units of the temperature (Celsius if true or Fahrenheit if false)
+ * tip_calibrated	- If current tip calibrated
+ * t_alter			- If greater than zero, is a alternate (Hot Air Gun or IRON) current temperature
+ * tilt_iron_used	- In IRON working mode the status of the iron tilt switch (active or inactive)
+ * fan_index		- Index of fan state bitmap sprite [0-3] (in Hot Air Gun mode)
+ */
+void DSPL::mainShow(uint16_t t_set, uint16_t t_cur, int16_t t_amb, uint8_t p_applied, bool is_celsius,
+		bool tip_calibrated, uint16_t t_alter, uint8_t fan_index, bool tilt_iron_used) {
 	t_set		= constrain(t_set, 0, 999);
 	t_cur		= constrain(t_cur, 0, 999);
 	p_applied	= constrain(p_applied, 0, 100);
 	static char sym[] = {'C', '\0'};
 	if (is_celsius) sym[0] = 'C'; else sym[0] = 'F';
-	char buff[8];
+	char buff[10];
 
 	uint8_t preset_label = d_width - d_width / 4 - 10;
 	uint8_t temp_bar = 0;
@@ -303,16 +301,26 @@ void DSPL::mainShow(uint16_t t_set, uint16_t t_cur, int16_t  t_amb, uint8_t p_ap
 	if (p_height > 0)
 		U8G2::drawTriangle(d_width-5, 45, d_width-5, 45-p_height, d_width-6-p_height/4, 45-p_height);
 
-	// Show the ambient temperature
-	if (t_amb >= -9 && t_amb < 100) {
-		sprintf(buff, "%2d", t_amb);
-		width = U8G2::getStrWidth(buff);
-		U8G2::drawStr(d_width-20-width, d_height, buff);
-		U8G2::drawBitmap(d_width-20, d_height-12, 1, 5, bmDegree);
-		U8G2::drawStr(d_width-12, d_height, sym);
-	}
 
-	// Show the current IRON temperature
+	if (t_alter > 0) {											// Show alternate device temperature
+		sprintf(buff, "%3d", t_alter);
+		width = U8G2::getStrWidth(buff);
+		U8G2::drawStr(d_width-width-20, d_height, buff);
+		U8G2::drawDisc(d_width-width-28, d_height-5, 2);
+	} else {
+		// Show the ambient temperature
+		if (t_amb >= -9 && t_amb < 100) {
+			sprintf(buff, "%2d", t_amb);
+			width = U8G2::getStrWidth(buff);
+			U8G2::drawStr(d_width-20-width, d_height, buff);
+		}
+	}
+	// Show degree symbol and units ('C' or 'F')
+	U8G2::drawBitmap(d_width-20, d_height-12, 1, 5, bmDegree);
+	U8G2::drawStr(d_width-12, d_height, sym);
+
+
+	// Show the current IRON or Hot Air Gun temperature
 	sprintf(buff, "%3d", t_cur);
 	U8G2::setFont(u8g2_font_kam28n);
 	width = U8G2::getStrWidth(buff);
@@ -329,13 +337,53 @@ void DSPL::mainShow(uint16_t t_set, uint16_t t_cur, int16_t  t_amb, uint8_t p_ap
 
 	// Show IRON tilt switch status
 	if (tilt_iron_used) {
-		U8G2::drawBitmap(0, d_height/2-4, 1, 8, bmTiltActive);
+		U8G2::drawBitmap(0, d_height/2-4, 2, 9, bmTiltActive);
 	} else if (fan_index) {
 		--fan_index;
-		fan_index &= 0x3;												// Can be from 0 to 3
+		fan_index &= 0x3;										// Can be from 0 to 3
 		U8G2::drawBitmap(0, d_height/2-8, 2, 16, bmFan[fan_index]);
 	}
 	U8G2::sendBuffer();
+}
+
+void DSPL::scrSave(uint16_t t_cur, uint16_t t_alter) {
+	U8G2::clearBuffer();
+	char buff[6];
+	uint8_t height = 30;
+	if (t_alter > 0) {
+		height += 16;
+		U8G2::setFont(u8g_font_profont15r);
+		sprintf(buff, "%3d", t_alter);
+		uint8_t width = U8G2::getStrWidth(buff);
+		U8G2::drawStr(saver_center[0]-width/2, saver_center[1]+height/2, buff);
+	}
+	U8G2::setFont(u8g2_font_kam28n);
+	sprintf(buff, "%3d", t_cur);
+	volatile uint8_t width   = U8G2::getStrWidth(buff);
+	U8G2::drawStr(saver_center[0]-width/2, saver_center[1]-height/2+30, buff);
+	U8G2::sendBuffer();
+
+	// calculate new message position
+	if (saver_speed[0] > 0) {
+		if (saver_center[0]+width/2 >= d_width) {				// Right border of the screen
+			saver_speed[0] = -1;
+		}
+	} else {
+		if ((int)saver_center[0]-width/2 <= 0) {				// Left border of the screen
+			saver_speed[0] = 1;
+		}
+	}
+	if (saver_speed[1] > 0) {
+		if (saver_center[1]+height/2 >= d_height) {				// Bottom border of the screen
+			saver_speed[1] = -1;
+		}
+	} else {
+		if ((int)saver_center[1]-height/2 <= 0) {				// Top border of the screen
+			saver_speed[1] = 1;
+		}
+	}
+	saver_center[0] += saver_speed[0];
+	saver_center[1] += saver_speed[1];
 }
 
 void  DSPL::tuneShow(uint16_t tune_temp, uint16_t temp, uint8_t pwr_pcnt) {
@@ -573,7 +621,7 @@ void DSPL::pidShowMenu(uint16_t pid_k[3], uint8_t index) {
 	U8G2::sendBuffer();
 }
 
-void DSPL::calibShow(const char* tip_name, uint16_t ref_temp, uint16_t current_temp, uint16_t real_temp, bool celsius,
+void DSPL::calibShow(const char* tip_name, uint8_t ref_point, uint16_t current_temp, uint16_t real_temp, bool celsius,
 		uint8_t power, bool on, bool ready, uint8_t int_temp_pcnt) {
 	static const char* title 	= "Tip:";
 	static const char* OFF		= "OFF";
@@ -585,7 +633,7 @@ void DSPL::calibShow(const char* tip_name, uint16_t ref_temp, uint16_t current_t
 	else
 		sym[0] = 'F';
 	char ref_buff[16];
-	sprintf(ref_buff, "Set: %3d", ref_temp);
+	sprintf(ref_buff, "Ref# %d", ref_point);
 
 	uint8_t p_height = gauge(power, 10, 45);						// Applied power triangle height
 
@@ -600,21 +648,22 @@ void DSPL::calibShow(const char* tip_name, uint16_t ref_temp, uint16_t current_t
 	U8G2::drawStr(start, 13, title);
 	U8G2::drawStr(start+width+5, 13, tip_name);
 	U8G2::drawHLine(5, 15, d_width-10);
-	// Show reference temperature
+	// Show reference point number
 	width = U8G2::getStrWidth(ref_buff);
 	U8G2::drawStr(5, 33, ref_buff);
-	U8G2::drawBitmap(5+width, 33-12, 1, 5, bmDegree);
-	U8G2::drawStr(5+8+width, 33, sym);
 	// Show current temperature
 	char temp_buff[10];
 	sprintf(temp_buff, "%3d", current_temp);
-	U8G2::drawBitmap(5, 60-15, 1, 15, bmTemperature);
-	U8G2::drawStr(16, 60, temp_buff);
+	U8G2::drawBitmap(5, 57-15, 1, 15, bmTemperature);
+	width = U8G2::getStrWidth(temp_buff);
+	U8G2::drawStr(16, 57, temp_buff);
+	U8G2::drawBitmap(16+1+width, 57-12, 1, 5, bmDegree);
+	U8G2::drawStr(16+1+8+width, 57, sym);
 	if (ready) {
 		// Show real temperature
-		U8G2::drawBitmap(60, 60-7, 1, 7, bmLeftMark);
+		U8G2::drawBitmap(70, 57-7, 1, 7, bmLeftMark);
 		sprintf(temp_buff, "%3d", real_temp);
-		U8G2::drawStr(70, 60, temp_buff);
+		U8G2::drawStr(80, 57, temp_buff);
 	}
 	// Show the power applied
 	if (p_height > 0) {
@@ -766,12 +815,12 @@ void DSPL::menuItemShow(const char* title, const char* item, const char* value, 
 	// Show the menu item
 	width = U8G2::getStrWidth(item);
 	uint8_t v_width	= U8G2::getStrWidth(value);
-	if (value && value[0]) {
-		U8G2::drawStr(10, 40, item);
+	if (value && value[0]) {											// Show in-place changed menu item
+		U8G2::drawStr(10, 45, item);
 		if (!modify) {
-			if ((width+v_width+25) < d_width) {
-				U8G2::drawStr(d_width-v_width-15, 40, value);
-			} else {
+			if ((width+v_width+25) < d_width) {							// The item name and its value fits single line
+				U8G2::drawStr(d_width-v_width-15, 45, value);
+			} else {													// The value of the parameter is shown on the next line
 				U8G2::drawStr(d_width-v_width, 60, value);
 			}
 		} else {
@@ -780,7 +829,7 @@ void DSPL::menuItemShow(const char* title, const char* item, const char* value, 
 			U8G2::drawStr((d_width+v_width)/2+2, 60, "]");
 		}
 	} else {
-		U8G2::drawStr((d_width-width)/2, 40, item);
+		U8G2::drawStr((d_width-width)/2, 45, item);
 	}
 	U8G2::sendBuffer();
 }
@@ -796,22 +845,27 @@ void DSPL::errorShow(void) {
 	} else {
 		U8G2::setFont(u8g_font_profont15r);
 		uint8_t len = strlen(err_msg);
-		uint8_t line = 0;
+		uint8_t line = 1;
 		for (uint8_t start = 0; start < len; ) {
 			uint8_t finish = start+1;
-			while (++finish < len && err_msg[finish] != '\n');
-			if (finish < len) {
-				err_msg[finish] = '\0';
-				uint8_t width = U8G2::getStrWidth(&err_msg[start]);
-				if (width < d_width) {
-					U8G2::drawStr((d_width-width)/2, line*13, &err_msg[start]);
-				} else {
-					U8G2::drawStr(0, line*13, &err_msg[start]);
-				}
-				++line;
-				err_msg[finish] = '\n';
-				start = finish + 1;
+			while (++finish < len) {
+				if (err_msg[finish] == '\n')
+					break;
 			}
+			bool not_end = (finish < len);
+			if (not_end)
+				err_msg[finish] = '\0';
+			uint8_t width = U8G2::getStrWidth(&err_msg[start]);
+			if (width < d_width) {
+				U8G2::drawStr((d_width-width)/2, line*13, &err_msg[start]);
+			} else {
+				U8G2::drawStr(0, line*13, &err_msg[start]);
+			}
+			if (++line > 4)												// Only 4 lines display cat fit
+				break;
+			if (not_end)
+				err_msg[finish] = '\n';
+			start = finish + 1;
 		}
 	}
 	U8G2::sendBuffer();
@@ -825,17 +879,43 @@ void DSPL::errorMessage(const char *msg) {
 	}
 }
 
-void DSPL::debugShow(uint16_t current, uint16_t temp, uint16_t ambient) {
-	char buff[10];
+void DSPL::debugShow(bool gun_mode, uint16_t power, uint16_t data[6]) {
+	char buff[14];
 
 	U8G2::setFont(u8g_font_profont15r);
 	U8G2::clearBuffer();
-	sprintf(buff, "%5d", current);
-	U8G2::drawStr(0,  15, buff);
-	sprintf(buff, "%5d", temp);
+	if (gun_mode) U8G2::drawBitmap(0, 0, 2, 9, bmTiltActive);
+	sprintf(buff, "%5d", power);
 	U8G2::drawStr(0,  30, buff);
-	sprintf(buff, "%5d", ambient);
-	U8G2::drawStr(0,  45, buff);
+	for (uint8_t i = 0; i < 4; ++i) {
+		sprintf(buff, "%5d", data[i]);
+		U8G2::drawStr(60,  15*(i+1), buff);
+	}
+	sprintf(buff, "(%c-%c)", data[4]>0?'i':' ', data[5]>0?'g':' ');
+	U8G2::drawStr(5,  60, buff);
 	U8G2::sendBuffer();
 }
 
+void DSPL::showVersion(void) {
+	static const char *title = "About";
+	char buff[30];
+	U8G2::setFont(u8g_font_profont15r);
+	U8G2::clearBuffer();
+	// Show title
+	uint8_t width	= U8G2::getStrWidth(title);
+	U8G2::drawStr((d_width-width)/2, 13, title);
+	U8G2::drawHLine((d_width-width)/2, 15, width);
+	// Show title
+	sprintf(buff, "IRON & Hot Air Gun");
+	width	= U8G2::getStrWidth(buff);
+	U8G2::drawStr((d_width-width)/2, 30, buff);
+	// Show software version
+	sprintf(buff, "Controller v.%s", FW_VERSION);
+	width	= U8G2::getStrWidth(buff);
+	U8G2::drawStr((d_width-width)/2, 45, buff);
+	// Print date of compilation
+	sprintf(buff, "%s", __DATE__);
+	width	= U8G2::getStrWidth(buff);
+	U8G2::drawStr((d_width-width)/2, 63, buff);
+	U8G2::sendBuffer();
+}

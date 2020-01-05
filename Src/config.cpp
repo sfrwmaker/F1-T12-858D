@@ -99,15 +99,21 @@ uint8_t CFG::currentTipIndex(void) {
 		return 0;
 }
 
-// Translate the internal temperature of the IRON to the human readable units (Celsius or Fahrenheit)
-uint16_t CFG::tempHuman(uint16_t temp, int16_t ambient) {
-	uint16_t tempH = TIP_CFG::tempCelsius(temp, ambient);
+/*
+ * Translate the internal temperature of the IRON or Hot Air Gun to the human readable units (Celsius or Fahrenheit)
+ * Parameters:
+ * temp 		- Device temperature in internal units
+ * ambient		- The ambient temperature
+ * force_mode	-
+ */
+uint16_t CFG::tempToHuman(uint16_t temp, int16_t ambient, CFG_TEMP_DEVICE force_device) {
+	uint16_t tempH = TIP_CFG::tempCelsius(temp, ambient, force_device);
 	if (!CFG_CORE::isCelsius())
 		tempH = celsiusToFahrenheit(tempH);
 	return tempH;
 }
 // Translate the temperature from human readable units (Celsius or Fahrenheit) to the internal units
-uint16_t CFG::human2temp(uint16_t t, int16_t ambient) {
+uint16_t CFG::humanToTemp(uint16_t t, int16_t ambient) {
 	int d = ambient - TIP_CFG::ambientTemp();
 	uint16_t t200	= referenceTemp(0) + d;
 	uint16_t t400	= referenceTemp(3) + d;
@@ -132,7 +138,7 @@ uint16_t CFG::human2temp(uint16_t t, int16_t ambient) {
 	}
 
 	for (uint8_t i = 0; i < 20; ++i) {
-		uint16_t tempH = tempHuman(temp, ambient);
+		uint16_t tempH = tempToHuman(temp, ambient);
 		if (tempH == t) {
 			return temp;
 		}
@@ -151,22 +157,6 @@ uint16_t CFG::human2temp(uint16_t t, int16_t ambient) {
 		temp = new_temp;
 	}
 	return temp;
-}
-
-// Approximate the temperature from human readable units (Celsius or Fahrenheit) to the internal units for low power mode
-uint16_t CFG::lowPowerTemp(uint16_t t, int16_t ambient) {
-	uint16_t tC = t;
-	if (!CFG_CORE::isCelsius()) {
-		tC = fahrenheitToCelsius(t);
-	}
-	if (tC > referenceTemp(0))
-		return human2temp(t, ambient);
-
-	int d = ambient - TIP_CFG::ambientTemp();
-	uint16_t t0 	= ambient;
-	uint16_t t200	= referenceTemp(0) + d;
-
-	return map(tC, t0, t200, 0, TIP_CFG::calibration(0));
 }
 
 // Build the complete tip name (including "T12-" prefix)
@@ -197,6 +187,7 @@ void CFG::savePID(PIDparam &pp, bool iron) {
 		a_cfg.gun_Kd	= pp.Kd;
 	}
 	saveRecord(&a_cfg);
+	CFG_CORE::syncConfig();
 }
 
 // Save new IRON tip calibration data to the EEPROM only. Do not change active configuration
@@ -231,20 +222,23 @@ void CFG::saveTipCalibtarion(uint8_t index, uint16_t temp[4], uint8_t mask, int8
 }
 
 // Toggle (activate/deactivate) tip activation flag. Do not change active tip configuration
-void CFG::toggleTipActivation(uint8_t index) {
-	if (!tip_table)	return;
+bool CFG::toggleTipActivation(uint8_t index) {
+	if (!tip_table)	return false;
 	TIP tip;
 	uint8_t tip_chunk_index = tip_table[index].tip_chunk_index;
 	if (tip_chunk_index == NO_TIP_CHUNK) {					// This tip data is not in the EEPROM, it was not active!
 		tip_chunk_index = freeTipChunkIndex();
-		if (tip_chunk_index == NO_TIP_CHUNK) return;		// Failed to find free slot to save tip configuration
+		if (tip_chunk_index == NO_TIP_CHUNK) return false;	// Failed to find free slot to save tip configuration
 		const char *name = TIPS::name(index);
 		if (name) {
 			strncpy(tip.name, name, tip_name_sz);			// Initialize tip name
 			tip.mask = TIP_ACTIVE;
 			if (saveTipData(&tip, tip_chunk_index) == EPR_OK) {
-				tip_table[index].tip_chunk_index	= tip_chunk_index;
-				tip_table[index].tip_mask			= tip.mask;
+				if (isTipCorrect(tip_chunk_index, &tip)) {
+					tip_table[index].tip_chunk_index	= tip_chunk_index;
+					tip_table[index].tip_mask			= tip.mask;
+					return true;
+				}
 			}
 		}
 	} else {												// Tip configuration data exists in the EEPROM
@@ -252,9 +246,27 @@ void CFG::toggleTipActivation(uint8_t index) {
 			tip.mask ^= TIP_ACTIVE;
 			if (saveTipData(&tip, tip_chunk_index) == EPR_OK) {
 				tip_table[index].tip_mask			= tip.mask;
+				return true;
 			}
 		}
 	}
+	return false;
+}
+
+// Check the TIP data was written correctly
+bool CFG::isTipCorrect(uint8_t tip_chunk_index, TIP *tip) {
+	bool same_name = true;
+	forceReloadChunk();							// Reread the chunk, disable EEPROM cache
+	TIP read_tip;
+	if (loadTipData(&read_tip, tip_chunk_index) == EPR_OK) {
+		for (uint8_t i = 0; i < tip_name_sz; ++i) {
+			if (read_tip.name[i] != tip->name[i]) {
+				same_name = false;
+				break;
+			}
+		}
+	}
+	return same_name;
 }
 
  // Build the tip list starting from the previous tip
@@ -357,11 +369,13 @@ bool CFG_CORE::areConfigsIdentical(void) {
 	if (a_cfg.iron_temp 		!= s_cfg.iron_temp) 		return false;
 	if (a_cfg.gun_temp 			!= s_cfg.gun_temp) 			return false;
 	if (a_cfg.gun_fan_speed 	!= s_cfg.gun_fan_speed)		return false;
+	if (a_cfg.low_temp			!= s_cfg.low_temp)			return false;
+	if (a_cfg.low_to			!= s_cfg.low_to)			return false;
 	if (a_cfg.tip 				!= s_cfg.tip)				return false;
 	if (a_cfg.off_timeout 		!= s_cfg.off_timeout)		return false;
 	if (a_cfg.bit_mask			!= s_cfg.bit_mask)			return false;
-	if (a_cfg.boost_temp		!= s_cfg.boost_temp)		return false;
-	if (a_cfg.boost_duration	!= s_cfg.boost_duration)	return false;
+	if (a_cfg.scr_save_timeout	!= s_cfg.scr_save_timeout)	return false;
+	if (a_cfg.boost				!= s_cfg.boost)				return false;
 	return true;
 };
 
@@ -379,27 +393,37 @@ uint8_t	CFG::freeTipChunkIndex(void) {
 			return index;
 		}
 	}
+	// Try to find not active TIP
+	for (uint8_t i = 0; i < TIPS::loaded(); ++i) {
+		if (tip_table[i].tip_chunk_index != NO_TIP_CHUNK) {
+			if (!(tip_table[i].tip_mask & TIP_ACTIVE)) {	// The data is allocated for tip, but tip is not activated
+				tip_table[i].tip_chunk_index 	= NO_TIP_CHUNK;
+				tip_table[i].tip_mask			= 0;
+				return i;
+			}
+		}
+	}
 	return NO_TIP_CHUNK;
 }
 
 //---------------------- CORE_CFG class functions --------------------------------
 void CFG_CORE::setDefaults(void) {
-	a_cfg.iron_temp		= 235;
-	a_cfg.gun_temp		= 300;
-	a_cfg.gun_fan_speed	= 1200;
-	a_cfg.tip			= 1;								// The first IRON tip. Tip #0 is the Hot Air Gun
-	a_cfg.off_timeout	= 0;
-	a_cfg.low_temp		= 0;
-	a_cfg.low_to		= 5;
-	a_cfg.bit_mask		= CFG_CELSIUS | CFG_BUZZER;
-	a_cfg.boost_temp	= 0;
-	a_cfg.boost_duration= 0;
-	a_cfg.iron_Kp		= 2300;
-	a_cfg.iron_Ki		= 48;
-	a_cfg.iron_Kd		= 300;
-	a_cfg.gun_Kp		= 256;
-	a_cfg.gun_Ki		= 40;
-	a_cfg.gun_Kd		= 159;
+	a_cfg.iron_temp			= 235;
+	a_cfg.gun_temp			= 300;
+	a_cfg.gun_fan_speed		= 1200;
+	a_cfg.tip				= 1;							// The first IRON tip. Tip #0 is the Hot Air Gun
+	a_cfg.off_timeout		= 0;
+	a_cfg.low_temp			= 0;
+	a_cfg.low_to			= 5;
+	a_cfg.bit_mask			= CFG_CELSIUS | CFG_BUZZER;
+	a_cfg.scr_save_timeout	= 0;
+	a_cfg.boost				= 0;
+	a_cfg.iron_Kp			= 2300;
+	a_cfg.iron_Ki			=   50;
+	a_cfg.iron_Kd			=  735;
+	a_cfg.gun_Kp			=  200;
+	a_cfg.gun_Ki			=   64;
+	a_cfg.gun_Kd			=  195;
 }
 
 void CFG_CORE::correctConfig(RECORD *cfg) {
@@ -417,19 +441,19 @@ void CFG_CORE::correctConfig(RECORD *cfg) {
 	}
 	cfg->iron_temp		= iron_tempC;
 	cfg->gun_temp		= gun_tempC;
-	if (cfg->off_timeout > 30)		cfg->off_timeout 	= 30;
-	if (cfg->tip > TIPS::loaded())	cfg->tip 			= 1;
-	if (cfg->boost_temp > 80)		cfg->boost_temp 	= 80;
-	if (cfg->boost_duration > 180)	cfg->boost_duration	= 180;
+	if (cfg->off_timeout > 30)		cfg->off_timeout 		= 30;
+	if (cfg->tip > TIPS::loaded())	cfg->tip 				= 1;
+	if (cfg->scr_save_timeout > 60) cfg->scr_save_timeout 	= 60;
 }
 
 // Apply main configuration parameters: automatic off timeout, buzzer and temperature units
-void CFG_CORE::setup(uint8_t off_timeout, bool buzzer, bool celsius, uint16_t low_temp, uint8_t low_to) {
-	bool cfg_celsius	= a_cfg.bit_mask & CFG_CELSIUS;
-	a_cfg.off_timeout	= off_timeout;
-	a_cfg.low_temp		= low_temp;
+void CFG_CORE::setup(uint8_t off_timeout, bool buzzer, bool celsius, bool keep_iron, uint16_t low_temp, uint8_t low_to, uint8_t scr_saver) {
+	bool cfg_celsius		= a_cfg.bit_mask & CFG_CELSIUS;
+	a_cfg.off_timeout		= off_timeout;
+	a_cfg.scr_save_timeout	= scr_saver;
+	a_cfg.low_temp			= low_temp;
 	if (low_to < 5) low_to = 5;
-	a_cfg.low_to		= low_to;
+	a_cfg.low_to			= low_to;
 	if (cfg_celsius	!= celsius) {							// When we change units, the temperature should be converted
 		if (celsius) {										// Translate preset temp. from Fahrenheit to Celsius
 			a_cfg.iron_temp	= fahrenheitToCelsius(a_cfg.iron_temp);
@@ -442,6 +466,7 @@ void CFG_CORE::setup(uint8_t off_timeout, bool buzzer, bool celsius, uint16_t lo
 	a_cfg.bit_mask	= 0;
 	if (celsius)	a_cfg.bit_mask |= CFG_CELSIUS;
 	if (buzzer)		a_cfg.bit_mask |= CFG_BUZZER;
+	if (keep_iron)	a_cfg.bit_mask |= CFG_KEEP_IRON;
 }
 
 void CFG_CORE::savePresetTempHuman(uint16_t temp_set) {
@@ -461,12 +486,37 @@ void CFG_CORE::restoreConfig(void) {
 	memcpy(&a_cfg, &s_cfg, sizeof(RECORD));					// restore configuration from spare copy
 }
 
+/*
+ * Boost is a bit map. The upper 4 bits are boost increment temperature (n*5 Celsius), i.e.
+ * 0000 - disabled
+ * 0001 - +5  degrees
+ * 1111 - +75 degrees
+ * The lower 4 bits is the boost time ((n+1)* 5 seconds), i.e.
+ * 0000 -  5 seconds
+ * 0001 - 10 seconds
+ * 1111 - 80 seconds
+ */
+
+uint8_t	CFG_CORE::boostTemp(void){
+	uint8_t t = a_cfg.boost >> 4;
+	return t * 5;
+}
+
+uint8_t	CFG_CORE::boostDuration(void) {
+	uint8_t d = a_cfg.boost & 0xF;
+	return (d+1)*5;
+}
+
 // Save boost parameters to the current configuration
 void CFG_CORE::saveBoost(uint8_t temp, uint8_t duration) {
-	if (temp > 0 && duration == 0)
-		duration = 10;
-	a_cfg.boost_temp 		= temp;
-	a_cfg.boost_duration	= duration;
+	if (temp > 75)		temp = 75;
+	if (duration > 80)	duration = 80;
+	if (duration < 5)   duration = 5;
+	temp += 4;
+	temp /= 5;
+	a_cfg.boost = temp << 4;
+	a_cfg.boost &= 0xF0;
+	a_cfg.boost |= ((duration-1)/5) & 0xF;
 }
 
 // PID parameters: Kp, Ki, Kd
@@ -482,7 +532,7 @@ PIDparam CFG_CORE::pidParamsSmooth(bool iron) {
 	if (iron)
 		return PIDparam(575, 10, 200);
 	else
-		return PIDparam(150, 16, 50);
+		return PIDparam(150, 64, 50);
 }
 
 //---------------------- CORE_CFG class functions --------------------------------
@@ -529,35 +579,44 @@ void TIP_CFG::activateGun(bool gun) {
 	gun_active = gun;
 }
 
-uint16_t TIP_CFG::referenceTemp(uint8_t index) {
+uint16_t TIP_CFG::referenceTemp(uint8_t index, CFG_TEMP_DEVICE force_device) {
 	if (index >= 4)
 		return 0;
 
-	if (gun_active)
+	bool gun = gun_active;
+	if (force_device != DEV_DEFAULT) {
+		gun = (force_device == DEV_GUN);
+	}
+	if (gun)
 		return temp_ref_gun[index];
 	else
 		return temp_ref_iron[index];
 }
 
 // Translate the internal temperature of the IRON or Hot Air Gun to Celsius
-uint16_t TIP_CFG::tempCelsius(uint16_t temp, int16_t ambient) {
-	uint8_t i = uint8_t(gun_active);							// Select appropriate calibration tip or gun
-	int16_t tempH = 0;
+uint16_t TIP_CFG::tempCelsius(uint16_t temp, int16_t ambient, CFG_TEMP_DEVICE force_device) {
+	uint8_t i 		= uint8_t(gun_active);						// Select appropriate calibration tip or gun
+	int16_t tempH 	= 0;
+	if (force_device != DEV_DEFAULT) {
+		i = (force_device == DEV_GUN)? 1: 0;
+	}
 
 	// The temperature difference between current ambient temperature and ambient temperature during tip calibration
 	int d = ambient - tip[i].ambient;
 	if (temp < tip[i].calibration[0]) {							// less than first calibration point
-	    tempH = map(temp, 0, tip[i].calibration[0], ambient, referenceTemp(0)+d);
+	    tempH = map(temp, 0, tip[i].calibration[0], ambient, referenceTemp(0, force_device)+d);
 	} else {
 		if (temp <= tip[i].calibration[3]) {					// Inside calibration interval
-			for (uint8_t j = 0; j < 4; ++j) {
+			for (uint8_t j = 1; j < 4; ++j) {
 				if (temp < tip[i].calibration[j]) {
-					tempH = map(temp, tip[i].calibration[j-1], tip[i].calibration[j], referenceTemp(j-1)+d, referenceTemp(j)+d);
+					tempH = map(temp, tip[i].calibration[j-1], tip[i].calibration[j],
+							referenceTemp(j-1, force_device)+d, referenceTemp(j, force_device)+d);
 					break;
 				}
 			}
 		} else {											// Greater than maximum
-			tempH = map(temp, tip[i].calibration[1], tip[i].calibration[3], referenceTemp(1)+d, referenceTemp(3)+d);
+			tempH = map(temp, tip[i].calibration[1], tip[i].calibration[3],
+					referenceTemp(1, force_device)+d, referenceTemp(3, force_device)+d);
 		}
 	}
 	tempH = constrain(tempH, ambient, 999);

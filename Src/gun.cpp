@@ -1,7 +1,7 @@
 /*
  * gun.cpp
  *
- *  Created on: 14 рту. 2019 у.
+ *  Created on: 14 aug 2019
  *      Author: Alex
  */
 
@@ -10,17 +10,13 @@
 void HOTGUN_HW::init(void) {
 	c_fan.init(sw_avg_len,		fan_off_value,	fan_on_value);
 	sw_gun.init(sw_avg_len,		sw_off_value, 	sw_on_value);
-	sw_mode.init(sw_avg_len,	sw_off_value, 	sw_on_value);
 }
 
 void HOTGUN_HW::checkSWStatus(void) {
 	if (HAL_GetTick() > check_sw) {
 		uint16_t on = 0;
-		if (GPIO_PIN_RESET == HAL_GPIO_ReadPin(GUN_REED_GPIO_Port, GUN_REED_Pin))	on = 100;
-		sw_gun.update(on);
-		on = 0;
-		if (GPIO_PIN_RESET == HAL_GPIO_ReadPin(MODE_SW_GPIO_Port, MODE_SW_Pin))		on = 100;
-		sw_mode.update(on);
+		if (GPIO_PIN_SET == HAL_GPIO_ReadPin(GUN_REED_GPIO_Port, GUN_REED_Pin))	on = 100;
+		sw_gun.update(on);									// If reed switch open, write 100;
 	}
 }
 
@@ -57,10 +53,17 @@ uint16_t HOTGUN::fanSpeed(void) {
 	return constrain(TIM2->CCR2, 0, 1999);
 }
 
+uint16_t HOTGUN::alternateTemp(void) {
+	uint16_t t = h_temp.read();
+	if (mode == POWER_OFF)
+		t = 0;
+	return t;
+}
+
 void HOTGUN::switchPower(bool On) {
 	switch (mode) {
 		case POWER_OFF:
-			if (fanSpeed() == 0) {
+			if (fanSpeed() == 0) {							// Not power supplied to the Fan
 				if (On)										// !FAN && On
 					mode = POWER_ON;
 			} else {
@@ -193,7 +196,7 @@ uint16_t HOTGUN::power(void) {
 	}
 
 	// Only supply the power if the Hot Air Gun is connected
-	if (p > 0 && (TIM2->CCR2 < min_fan_speed || !isGunConnected())) p = 0;
+	if (TIM2->CCR2 < min_fan_speed || !isGunConnected()) p = 0;
 	h_power.update(p);
 	int32_t	ap	= h_power.average(p);
 	int32_t	diff 	= ap - p;

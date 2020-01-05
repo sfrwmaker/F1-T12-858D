@@ -1,7 +1,7 @@
 /*
  * iron.cpp
  *
- *  Created on: 13 рту. 2019 у.
+ *  Created on: 13 aug 2019
  *      Author: Alex
  */
 
@@ -105,6 +105,13 @@ void IRON::autoTunePID(uint16_t base_pwr, uint16_t delta_power, uint16_t base_te
 	h_power.reset();
 	d_power.reset();
 	PIDTUNE::start(base_pwr,delta_power, base_temp, temp);
+}
+
+uint16_t IRON::alternateTemp(void) {
+	uint16_t t = h_temp.read();
+	if (mode == POWER_OFF)
+		t = 0;
+	return t;
 }
 
 void IRON::setTemp(uint16_t t) {

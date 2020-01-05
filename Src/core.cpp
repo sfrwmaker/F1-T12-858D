@@ -1,7 +1,7 @@
 /*
  * core.cpp
  *
- *  Created on: 30 рту. 2019 у.
+ *  Created on: 30 aug 2019
  *      Author: Alex
  */
 
@@ -14,8 +14,12 @@
 #include "tools.h"
 #include "buzzer.h"
 
-#define ADC_CONV (4)										// Maximum numbers of ADC conversions
-#define ADC_BUFF_SZ	(2*ADC_CONV)
+#include "display.h"
+#include <math.h>
+
+#define ADC_CONV 	(4)										// Activated ADC Ranks Number (hadc2.Init.NbrOfConversion)
+#define ADC_LOOPS	(2)										// Number of ADC conversion loops. Should be even
+#define ADC_BUFF_SZ	(2*ADC_CONV*ADC_LOOPS)
 
 extern ADC_HandleTypeDef	hadc1;
 extern ADC_HandleTypeDef	hadc2;
@@ -26,13 +30,14 @@ extern TIM_HandleTypeDef	htim4;
 typedef enum { ADC_IDLE, ADC_CURRENT, ADC_TEMP } t_ADC_mode;
 volatile static t_ADC_mode	adc_mode = ADC_IDLE;
 volatile static uint16_t	buff[ADC_BUFF_SZ];
-volatile static	uint16_t	tim1_cntr	= 65535;			// Previous value of TIM1 counter. Using to check the TIM1 value changing
+volatile static	uint32_t	tim1_cntr	= 0;				// Previous value of TIM1 counter. Using to check the TIM1 value changing
 volatile static	bool		ac_sine		= false;			// Flag indicating that TIM1 is driven by AC power interrupts on AC_ZERO pin
+volatile static uint8_t		check_count	= 1;				// Decrement from check_period to zero by TIM2. When become zero, force to check the IRON connectivity
 
-const static uint16_t		min_iron_pwm	= 1;			// This power should be applied to check the current through the IRON
-const static uint16_t  		max_iron_pwm	= 1980;			// Max value should be less than TIM2.CHANNEL3 value by 10
-const static uint16_t		min_gun_pwm		= 0;			// No need to supply any power when Hot Air Gun is switched off
+const static uint16_t  		max_iron_pwm	= 1960;			// Max value should be less than TIM2.CHANNEL3 value by 20
 const static uint16_t  		max_gun_pwm		= 99;			// TIM1 period. Full power can be applied to the HOT GUN
+const static uint16_t		check_iron_pwm	= 1;			// This power should be applied to check the current through the IRON
+const static uint8_t		check_period	= 6;			// TIM2 loops between check current through the iron
 
 static HW		core;										// Hardware core (including all device instances)
 
@@ -52,6 +57,7 @@ static	MTPID			pid_tune(&core);
 static	MENU_GUN		gun_menu(&core, &calib_manual, &tune, &pid_tune);
 static	MMENU			main_menu(&core, &boost_setup, &calib_menu, &activate, &tune, &pid_tune, &gun_menu);
 static	MWORK_GUN		work_gun(&core);
+static  MDEBUG			debug(&core);
 static	MODE*           pMode = &standby_iron;
 
 bool isACsine(void) 	{ return ac_sine; }
@@ -93,18 +99,7 @@ CFG_STATUS HW::init(void) {
 }
 
 extern "C" void setup(void) {
-
-	switch (core.init()) {
-		case	CFG_NO_TIP:
-			pMode	= &activate;							// No tip configured, run tip activation menu
-			break;
-		case	CFG_READ_ERROR:								// Failed to read EEPROM
-			core.dspl.errorMessage("EEPROM\nread\nerror");
-			pMode	= &fail;
-			break;
-		default:
-			break;
-	}
+	CFG_STATUS cfg_init = core.init();						// Initialize the hardware structure before start timers
 
 	HAL_ADCEx_Calibration_Start(&hadc1);					// Calibrate both ADCs
 	HAL_ADCEx_Calibration_Start(&hadc2);
@@ -116,9 +111,7 @@ extern "C" void setup(void) {
 	HAL_TIM_OC_Start_IT(&htim2,  TIM_CHANNEL_4);			// Calculate power of the IRON
 	HAL_TIM_PWM_Start(&htim4,    TIM_CHANNEL_4);			// PWM signal for the buzzer
 
-	/*
-	 * Setup main mode parameters: return mode, short press mode, long press mode
-	 */
+	// Setup main mode parameters: return mode, short press mode, long press mode
 	standby_iron.setup(&select, &work_iron, &main_menu);
 	work_iron.setup(&standby_iron, &standby_iron, &boost);
 	boost.setup(&work_iron, &work_iron, &work_iron);
@@ -134,16 +127,30 @@ extern "C" void setup(void) {
 	gun_menu.setup(&main_menu, &standby_iron, &standby_iron);
 	main_menu.setup(&standby_iron, &standby_iron, &standby_iron);
 
-	work_gun.setIronStandbyMode(&standby_iron);
-	standby_iron.setGunStandbyMode(&work_gun);
-	select.setGunStandbyMode(&work_gun);
+	standby_iron.setGunMode(&work_gun);
+	work_iron.setGunMode(&work_gun);
+	work_gun.setIronModes(&standby_iron, &work_iron);
 
-	HAL_Delay(500);											// Wait till hardware status updated
+	switch (cfg_init) {
+		case	CFG_NO_TIP:
+			pMode	= &activate;							// No tip configured, run tip activation menu
+			break;
+		case	CFG_READ_ERROR:								// Failed to read EEPROM
+			core.dspl.errorMessage("EEPROM\nread\nerror");
+			pMode	= &fail;
+			break;
+		default:
+			break;
+	}
+
+	syncAC();												// Synchronize TIM2 timer to AC power
+	HAL_Delay(1000);										// Wait till hardware status updated
 	pMode->init();
 }
 
 
 extern "C" void loop(void) {
+	static uint32_t AC_check_time = 0;						// Time in ms when to check TIM1 is running
 	core.iron.checkSWStatus();								// Check status of IRON tilt switches
 	core.hotgun.checkSWStatus();							// Check status of Gun Reed and Mode switches
 	MODE* new_mode = pMode->returnToMain();
@@ -164,6 +171,12 @@ extern "C" void loop(void) {
 		pMode->init();
 	}
 
+	// If TIM1 counter has been changed since last check, we received AC_ZERO interrupts from AC power
+	if (HAL_GetTick() >= AC_check_time) {
+		ac_sine		= (TIM1->CNT != tim1_cntr);
+		tim1_cntr	= TIM1->CNT;
+		AC_check_time = HAL_GetTick() + 40;					// 50 Hz is 20 ms
+	}
 }
 
 static bool adcStart(t_ADC_mode mode) {
@@ -172,31 +185,8 @@ static bool adcStart(t_ADC_mode mode) {
     	TIM1->CCR4 = 0;										// Switch off the Hot Air Gun
 		return false;
     }
-	ADC_ChannelConfTypeDef sConfig = {0};
-    if (mode == ADC_TEMP) {
-        sConfig.Channel			= ADC_CHANNEL_4;			// IRON_TEMP
-		sConfig.Rank			= ADC_REGULAR_RANK_1;
-		sConfig.SamplingTime 	= ADC_SAMPLETIME_71CYCLES_5;
-		if (HAL_OK != HAL_ADC_ConfigChannel(&hadc1, &sConfig))	return false;
-		if (HAL_OK != HAL_ADC_ConfigChannel(&hadc2, &sConfig))	return false;
-		sConfig.Channel 		= ADC_CHANNEL_5;			// GUN_TEMP
-		sConfig.Rank 			= ADC_REGULAR_RANK_2;
-		if (HAL_OK != HAL_ADC_ConfigChannel(&hadc1, &sConfig))	return false;
-		sConfig.Channel 		= ADC_CHANNEL_6;			// AMBIENT_TEMP
-		if (HAL_OK != HAL_ADC_ConfigChannel(&hadc2, &sConfig))	return false;
-    } else if (mode == ADC_CURRENT) {
-		sConfig.Channel			= ADC_CHANNEL_2;			// IRON_CURRENT
-		sConfig.Rank			= ADC_REGULAR_RANK_1;
-		sConfig.SamplingTime 	= ADC_SAMPLETIME_71CYCLES_5;
-		if (HAL_OK != HAL_ADC_ConfigChannel(&hadc1, &sConfig))	return false;
-		if (HAL_OK != HAL_ADC_ConfigChannel(&hadc2, &sConfig))  return false;
-		sConfig.Channel 		= ADC_CHANNEL_3;			// FAN_CURRENT
-		sConfig.Rank 			= ADC_REGULAR_RANK_2;
-		if (HAL_OK != HAL_ADC_ConfigChannel(&hadc1, &sConfig))	return false;
-		if (HAL_OK != HAL_ADC_ConfigChannel(&hadc2, &sConfig))	return false;
-    }
 	HAL_ADC_Start(&hadc2);
-    HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*)buff, ADC_CONV);
+    HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*)buff, ADC_CONV*ADC_LOOPS);
 	adc_mode = mode;
 	return true;
 }
@@ -210,16 +200,13 @@ static bool adcStart(t_ADC_mode mode) {
  */
 extern "C" void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim) {
 	if (htim->Instance == TIM1 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_3) {
-		volatile uint16_t gun_power	= core.hotgun.power();
-		TIM1->CCR4	= constrain(gun_power, min_gun_pwm, max_gun_pwm);
+		uint16_t gun_power	= core.hotgun.power();
+		TIM1->CCR4	= constrain(gun_power, 0, max_gun_pwm);
 	}
 	if (htim->Instance == TIM2) {
 		if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_3) {
-			if (TIM2->CCR1)									// If IRON has been powered
+			if (TIM2->CCR1 || TIM2->CCR2)					// If IRON of Hot Air Gun has been powered
 				adcStart(ADC_CURRENT);
-			// If TIM1 counter has been changed since last TIM2 interrupt, we detected AC_ZERO interrupts from AC power
-			ac_sine		= (TIM1->CNT != tim1_cntr);
-			tim1_cntr	= TIM1->CNT;
 		} else if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4) {
 			adcStart(ADC_TEMP);
 		}
@@ -228,42 +215,59 @@ extern "C" void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim) {
 
 /*
  * IRQ handler of ADC complete request. The data is in the ADC buffer (buff)
+ * Data read by 8 slots interleaved: adc1-rank1, adc2-rank1, adc1-rank2, adc2-rank2, ..., adc1-rank4, adc2-rank4
+ * The ADC buffer would have the following fields (see MX_ADC1_Init() MX_ADC2_Init() in main.c)
+ * ADC1:			ADC2:
+ * iron_current		iron_temp
+ * fan_current		iron_temp
+ * gun_temp			iron_temp
+ * ambient			iron_temp
  */
 extern "C" void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+	if (hadc->Instance != ADC1) return;
 	HAL_ADCEx_MultiModeStop_DMA(&hadc1);
 	HAL_ADC_Stop(&hadc2);
-	if (adc_mode == ADC_TEMP) {
+	if (adc_mode == ADC_TEMP) {								// Read the temperatures only, the current should be ignored
 		volatile uint32_t iron_temp	= 0;
 		volatile uint32_t gun_temp	= 0;
 		volatile uint32_t ambient 	= 0;
-		for (uint8_t i = 0; i < 2*ADC_CONV; i += 4) {
-			iron_temp	+= buff[i]	 + buff[i+1];
-			gun_temp	+= buff[i+2];
-			ambient		+= buff[i+3];
+		for (uint8_t i = 0; i < ADC_BUFF_SZ; i += 2*ADC_CONV) {
+			iron_temp	+= buff[i+1] + buff[i+3] + buff[i+5] + buff[i+7];
+			gun_temp	+= buff[i+4];
+			ambient		+= buff[i+6];
 		}
-		iron_temp 	+= ADC_CONV/2;							// Round the result
-		iron_temp 	/= ADC_CONV;
-		gun_temp 	+= ADC_CONV/4;							// Round the result
-		gun_temp  	/= ADC_CONV/2;
-		ambient 	+= ADC_CONV/4;							// Round the result
-		ambient  	/= ADC_CONV/2;
+		iron_temp 	+= (ADC_LOOPS*ADC_CONV)/2;				// Round the result
+		iron_temp 	/= ADC_LOOPS*ADC_CONV;
+		gun_temp 	+= ADC_LOOPS/2;							// Round the result
+		gun_temp  	/= ADC_LOOPS;
+		ambient 	+= ADC_LOOPS/2;							// Round the result
+		ambient  	/= ADC_LOOPS;
 		core.iron.updateAmbient(ambient);
 
+		uint8_t min_iron_pwm = 0;							// By default do not power the IRON to check connectivity
+		if (--check_count == 0) {							// It is time to check IRON is connected or not
+			check_count	= check_period;
+			min_iron_pwm = check_iron_pwm;
+		}
 		if (core.iron.isIronConnected()) {
 			uint16_t iron_power = core.iron.power(iron_temp);
 			TIM2->CCR1	= constrain(iron_power, min_iron_pwm, max_iron_pwm);
 
 		} else {
-			TIM2->CCR1	= min_iron_pwm;						// Always supply minimum power to the IRON to check connectivity
+			TIM2->CCR1	= min_iron_pwm;						// Sometimes supply minimum power to the IRON to check connectivity
 		}
-		core.hotgun.updateCurrentTemp(gun_temp);			// Update average Hot Air Gun temperature. Apply the power by TIM1.CNANNEL3 interrupt
-	} else if (adc_mode == ADC_CURRENT) {
-		uint32_t iron_curr	= 0;
-		uint32_t fan_curr 	= 0;
-		for (uint8_t i = 0; i < 2*ADC_CONV; i += 4) {
-			iron_curr	+= buff[i] 		+ buff[i+1];
-			fan_curr	+= buff[i+2]	+ buff[i+3];
+		core.hotgun.updateTemp(gun_temp);					// Update average Hot Air Gun temperature. Apply the power by TIM1.CNANNEL3 interrupt
+	} else if (adc_mode == ADC_CURRENT) {					// Read the currents, the temperatures should be ignored
+		volatile uint32_t iron_curr	= 0;
+		volatile uint32_t fan_curr 	= 0;
+		for (uint8_t i = 0; i < ADC_BUFF_SZ; i += 2*ADC_CONV) {
+			iron_curr	+= buff[i];
+			fan_curr	+= buff[i+2];
 		}
+		iron_curr	+= ADC_LOOPS/2;							// Round the result
+		iron_curr	/= ADC_LOOPS;
+		fan_curr	+= ADC_LOOPS/2;							// Round the result
+		fan_curr	/= ADC_LOOPS;
 
 		if (TIM2->CCR1)										// If IRON has been powered
 			core.iron.updateIronCurrent(iron_curr);
@@ -273,8 +277,8 @@ extern "C" void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 	adc_mode = ADC_IDLE;
 }
 
-extern "C" void HAL_ADC_ErrorCallback(ADC_HandleTypeDef *hadc) { }
-extern "C" void HAL_ADC_LevelOutOfWindowCallback(ADC_HandleTypeDef *hadc) { }
+extern "C" void HAL_ADC_ErrorCallback(ADC_HandleTypeDef *hadc) 				{ }
+extern "C" void HAL_ADC_LevelOutOfWindowCallback(ADC_HandleTypeDef *hadc) 	{ }
 
 // Encoder Rotated
 extern "C" void EXTI0_IRQHandler(void) {
@@ -282,8 +286,3 @@ extern "C" void EXTI0_IRQHandler(void) {
 	__HAL_GPIO_EXTI_CLEAR_IT(ENCODER_L_Pin);
 }
 
-// Encoder button pressed
-extern "C" void EXTI1_IRQHandler(void) {
-	core.encoder.buttonIntr();
-	__HAL_GPIO_EXTI_CLEAR_IT(ENCODER_B_Pin);
-}
