@@ -5,6 +5,7 @@ The project description is available here: https://www.hackster.io/sfrwmaker/stm
 
 REVISION HISTORY:
 Nov 2019. First release created
+
 Jan 2020. Second release created
   - Minor changes in the controller schematics
   - Now the Hot Air Gun reed switch controls working mode
