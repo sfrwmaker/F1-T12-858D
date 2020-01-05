@@ -79,7 +79,6 @@ void Error_Handler(void);
 #define ENCODER_L_EXTI_IRQn EXTI0_IRQn
 #define ENCODER_B_Pin GPIO_PIN_1
 #define ENCODER_B_GPIO_Port GPIOB
-#define ENCODER_B_EXTI_IRQn EXTI1_IRQn
 #define OLED_RESET_Pin GPIO_PIN_10
 #define OLED_RESET_GPIO_Port GPIOB
 #define OLED_DC_Pin GPIO_PIN_11
@@ -98,13 +97,12 @@ void Error_Handler(void);
 #define GUN_POWER_GPIO_Port GPIOA
 #define AC_ZERO_Pin GPIO_PIN_12
 #define AC_ZERO_GPIO_Port GPIOA
-#define MODE_SW_Pin GPIO_PIN_15
-#define MODE_SW_GPIO_Port GPIOA
 #define TILT_SW_Pin GPIO_PIN_3
 #define TILT_SW_GPIO_Port GPIOB
 #define BUZZER_Pin GPIO_PIN_9
 #define BUZZER_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
+#define FW_VERSION	("2.00")
 
 /* USER CODE END Private defines */
 

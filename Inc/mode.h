@@ -22,17 +22,19 @@
 
 class MODE : public BUZZER {
 	public:
-		MODE(HW *pCore)										{ this->pCore = pCore; }
+		MODE(HW *pCore)										{ this->pCore = pCore; 	}
 		void			setup(MODE* return_mode, MODE* short_mode, MODE* long_mode);
 		virtual void	init(void)							{ }
 		virtual MODE*	loop(void)							{ return 0; }
 		virtual			~MODE(void)							{ }
-		void			ironMode(bool iron)					{ use_iron = iron; }
+		void			ironMode(bool iron)					{ use_iron 	= iron; 	}
+		void			keepIronWorking(bool iw)			{ keep_iron = iw; 		}
 		MODE*			returnToMain(void);
 	protected:
 		void 			resetTimeout(void);
 		void 			setTimeout(uint16_t t);
 		bool			use_iron		= true;
+		bool			keep_iron		= false;			// Keep iron working while in Hot Air Gun mode
 		HW*				pCore			= 0;
 		uint16_t		timeout_secs	= 0;				// Timeout to return to main mode, seconds
 		uint32_t		time_to_return 	= 0;				// Time in ms when to return to the main mode
@@ -43,15 +45,27 @@ class MODE : public BUZZER {
 
 };
 
+class SCRSAVER {
+	public:
+		SCRSAVER(void)										{ }
+		void			init(uint8_t timeout)				{ to = timeout; reset(); }
+		void			reset(void);
+		bool 			scrSaver(void);
+	private:
+		uint32_t		scr_save_ms		= 0;				// Time in ms when to switch to Screen Saver mode (if > 0)
+		uint8_t			to				= 0;
+		bool			scr_saver		= false;			// Is the screen saver active
+};
+
 //---------------------- The iron standby mode -----------------------------------
-class MSTBY_IRON : public MODE {
+class MSTBY_IRON : public MODE, SCRSAVER {
 	public:
 		MSTBY_IRON(HW *pCore) : MODE(pCore)					{ }
-		void			setGunStandbyMode(MODE* gs)			{ gun_standby = gs; }
 		virtual void	init(void);
 		virtual MODE*	loop(void);
+		void			setGunMode(MODE* gw)				{ gun_work = gw; }
 	private:
-		MODE*			gun_standby		= 0;				// Hot Air Gun Standby mode
+		MODE*			gun_work		= 0;				// Hot Air Gun Work mode
 		uint32_t		clear_used_ms	= 0;				// Time in ms when used flag should be cleared (if > 0)
 		bool			used			= false;			// Whether the IRON was used (was hot)
 		bool			cool_notified	= 0;				// Whether there was cold notification played
@@ -59,22 +73,24 @@ class MSTBY_IRON : public MODE {
 };
 
 //-------------------- The iron main working mode, keep the temperature ----------
-class MWORK_IRON : public MODE {
+class MWORK_IRON : public MODE, SCRSAVER {
 	public:
 		MWORK_IRON(HW *pCore) : MODE(pCore), idle_pwr(ec)					{ }
 		virtual void	init(void);
 		virtual MODE*	loop(void);
+		void			setGunMode(MODE* gw)				{ gun_work = gw; }
 	private:
-		void 			adjustPresetTemp(uint16_t presetTemp);
+		void 			adjustPresetTemp(void);
 		void			hwTimeout(uint16_t low_temp, bool tilt_active);
 		void 			swTimeout(uint16_t temp, uint16_t temp_set, uint16_t temp_setH, uint32_t td, uint32_t pd, uint16_t ap, int16_t ip);
+		MODE*			gun_work		= 0;				// Hot Air Gun Standby mode
 		EMP_AVERAGE  	idle_pwr;							// Exponential average value for idle power
 		bool 			auto_off_notified = false;			// The time (in ms) when the automatic power-off was notified
 		bool      		ready			= false;			// Whether the IRON have reached the preset temperature
 		bool			lowpower_mode	= false;			// Whether hardware low power mode using tilt switch
 		uint32_t		ready_clear		= 0;				// Time when to clean 'Ready' message
 		uint32_t		lowpower_time	= 0;				// Time when switch to standby power mode
-		uint16_t		preset_temp		= 0;				// The preset temperature
+		uint16_t		preset_temp		= 0;				// Save iron preset temp. in lower temp mode
 		uint16_t 		old_temp_set	= 0;
 		const uint16_t	period			= 500;				// Redraw display period (ms)
 		const uint8_t	ec				= 5;				// The exponential average coefficient
@@ -95,11 +111,9 @@ class MBOOST : public MODE {
 class MSLCT : public MODE {
 	public:
 		MSLCT(HW *pCore) : MODE(pCore)						{ }
-		void			setGunStandbyMode(MODE* gs)			{ gun_standby = gs; }
 		virtual void	init(void);
 		virtual MODE*	loop(void);
 	private:
-		MODE*			gun_standby			= 0;
 		TIP_ITEM		tip_list[3];
 		uint32_t 		tip_begin_select	= 0;			// The time in ms when we started to select new tip
 		uint8_t 		old_index = 3;
@@ -129,21 +143,25 @@ class MMENU : public MODE {
 		MODE*		mode_tune;
 		MODE*		mode_tune_pid;
 		MODE*		mode_gun_menu;
-		uint8_t		off_timeout		= 0;					// Automatic switch off timeout (minutes or 0 to disable)
-		uint16_t	low_temp		= 0;					// The low power temperature (Celsius or Fahrenheit) 0 - disable tilt sensor
+		uint8_t		off_timeout		= 0;					// Automatic switch off timeout in minutes or 0 to disable
+		uint16_t	low_temp		= 0;					// The low power temperature (Celsius) 0 - disable tilt sensor
 		uint8_t		low_to			= 0;					// The low power timeout, seconds
+		uint8_t		scr_saver		= 0;					// Screen saver timeout in minutes or 0 to disable
 		bool		buzzer			= true;					// Whether the buzzer is enabled
 		bool		celsius			= true;					// Temperature units: C/F
+		bool		keep_iron		= false;				// Keep the iron working While in Hot Air Gun Mode
 		uint8_t		set_param		= 0;					// The index of the modifying parameter
-		uint8_t		m_len			= 14;					// The menu length
+		uint8_t		m_len			= 17;					// The menu length
 		uint8_t		mode_menu_item 	= 1;					// Save active menu element index to return back later
-		const char* menu_name[14] = {
+		const char* menu_name[17] = {
 			"boost setup",
 			"units",
 			"buzzer",
+			"keep iron",
 			"auto off",
 			"standby temp",
 			"standby time",
+			"screen saver",
 			"save",
 			"cancel",
 			"calibrate tip",
@@ -151,7 +169,8 @@ class MMENU : public MODE {
 			"tune iron",
 			"gun menu",
 			"reset config",
-			"tune iron PID"
+			"tune iron PID",
+			"about"
 		};
 		const uint16_t	min_standby_C	= 120;				// Minimum standby temperature, Celsius
 		const uint16_t	max_standby_C	= 200;				// Maximum standby temperature, Celsius
@@ -221,10 +240,10 @@ class MMBST : public MODE {
 		virtual void	init(void);
 		virtual MODE*	loop(void);
 	private:
-		uint8_t		delta_temp	= 0;						// The temperature increment
-		uint8_t		duration	= 0;						// The boost period (secs)
-		uint8_t		mode		= 0;						// The current mode: 0: select menu item, 1 - change temp, 2 - change duration
-		uint8_t 	old_item 	= 0;
+		uint8_t			delta_temp	= 0;					// The temperature increment
+		uint8_t			duration	= 0;					// The boost period (secs)
+		uint8_t			mode		= 0;					// The current mode: 0: select menu item, 1 - change temp, 2 - change duration
+		uint8_t 		old_item 	= 0;
 		const char* boost_name[3] = {
 			"temperature",
 			"duration",
@@ -262,18 +281,17 @@ class MTPID : public MODE {
 };
 
 //---------------------- The Hot Air Gun main working mode -----------------------
-class MWORK_GUN : public MODE {
+class MWORK_GUN : public MODE, SCRSAVER {
 	public:
 		MWORK_GUN(HW *pCore) : MODE(pCore)					{ }
-		void			setIronStandbyMode(MODE* is)		{ iron_standby = is; }
+		void			setIronModes(MODE* is, MODE* iw)				{ iron_standby = is; iron_working = iw; }
 		virtual void	init(void);
 		virtual MODE*	loop(void);
 	private:
-		MODE*			iron_standby	= 0;
+		MODE*			iron_standby	= 0;				// Standby IRON mode
+		MODE*			iron_working	= 0;				// Working IRON mode
 		uint32_t 		old_param		= 0;
-		bool			on				= true;
 		bool			edit_temp		= true;				// The rotary encoder is changing the temperature preset
-		bool			use_reed_switch	= false;			// Use Hot Air Gun reed switch to control the Hot Air Gun
 		bool      		ready			= false;			// Whether the Hot Air Gun have reached the preset temperature
 		uint32_t		return_to_temp	= 0;				// The time when to return to change the temperature
 		uint32_t		ready_clear		= 0;				// Time when to clean 'Ready' message
@@ -292,7 +310,7 @@ class MENU_GUN : public MODE {
 		MODE*			mode_calibrate;
 		MODE*			mode_tune;
 		MODE*			mode_pid;
-		uint8_t  		old_item = 5;
+		uint8_t  		old_item	= 5;
 		const char* menu_list[5] = {
 			"calibrate",
 			"tune gun",
@@ -310,5 +328,18 @@ class MFAIL : public MODE {
 		virtual MODE*	loop(void);
 };
 
+
+//---------------------- The Debug mode: display internal parameters ------------
+class MDEBUG : public MODE {
+	public:
+		MDEBUG(HW *pCore) : MODE(pCore)						{ }
+		virtual void	init(void);
+		virtual MODE*	loop(void);
+	private:
+		uint16_t		old_power 		= 0;
+		bool			gun_mode		= false;
+		const uint16_t	max_iron_power 	= 300;
+		const uint16_t	max_fan_power 	= 1999;
+};
 
 #endif /* MODE_H_ */

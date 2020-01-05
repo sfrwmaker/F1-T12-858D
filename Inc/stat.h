@@ -1,8 +1,6 @@
 /*
  * stat.h
  *
- *  Created on: 13 рту. 2019 у.
- *      Author: Alex
  *  Math statistic class
  */
 

@@ -1,7 +1,7 @@
 /*
  * iron.h
  *
- *  Created on: 13 рту. 2019 у.
+ *  Created on: 13 aug 2019
  *      Author: Alex
  */
 
@@ -16,6 +16,7 @@ class IRON_HW {
 		IRON_HW(void)										{ }
 		void		init(void);
 		bool 		isIronConnected(void) 					{ return c_iron.status();						}
+		uint16_t	ironCurrent(void)						{ return c_iron.read();							}	// Used in debug mode only
 		bool 		isIronTiltSwitch(void) 					{ return sw_iron.status();						}	// TRUE if switch is open
 		void		updateAmbient(uint32_t value)			{ t_amb.update(value);							}
 		void		updateIronCurrent(uint16_t value)		{ c_iron.update(value);							}
@@ -33,12 +34,12 @@ class IRON_HW {
 		SWITCH 		sw_iron;								// IRON tilt switch
 		const uint8_t	ambient_emp_coeff	= 10;			// Exponential average coefficient for ambient temperature
 		const uint8_t	iron_emp_coeff		= 8;			// Exponential average coefficient for IRON temperature
-		const uint16_t	iron_off_value		= 120;
-		const uint16_t	iron_on_value		= 400;
+		const uint16_t	iron_off_value		= 500;
+		const uint16_t	iron_on_value		= 1000;
 		const uint8_t	iron_sw_len			= 3;			// Exponential coefficient of current through the IRON switch
 		const uint8_t	sw_off_value		= 30;
 		const uint8_t	sw_on_value			= 60;
-		const uint8_t	sw_avg_len			= 10;
+		const uint8_t	sw_avg_len			= 5;
 		const uint32_t	check_sw_period 	= 100;
 };
 
@@ -57,6 +58,7 @@ class IRON : public IRON_HW, public PID, public PIDTUNE {
 		uint16_t	pwrDispersion(void)              		{ return d_power.read(); }
 		uint16_t    getMaxFixedPower(void)             		{ return max_fix_power; }
 		bool		isCold(void)							{ return (mode == POWER_OFF); }
+		uint16_t	alternateTemp(void);					// Current temperature or 0 if cold
 		void     	setTemp(uint16_t t);					// Set the temperature to be kept (internal units)
 		uint16_t    avgPower(void);							// Average applied power
 		uint8_t     avgPowerPcnt(void);						// Power applied to the IRON in percents
@@ -77,7 +79,7 @@ class IRON : public IRON_HW, public PID, public PIDTUNE {
 		const uint16_t	max_power      		= 1999;			// Maximum power to the IRON
 		const uint16_t	max_fix_power  		= 1000;			// Maximum power in fixed power mode
 		const uint8_t	ec	   				= 20;			// Exponential average coefficient
-		const uint16_t	iron_cold			= 50;			// The internal temperature when the IRON is cold
+		const uint16_t	iron_cold			= 100;			// The internal temperature when the IRON is cold
 };
 
 #endif

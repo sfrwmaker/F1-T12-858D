@@ -45,6 +45,7 @@ class EEPROM {
 		TIP_IO_STATUS 	loadTipData(TIP* tip, uint8_t tip_chunk_index);
 		TIP_IO_STATUS	saveTipData(TIP* tip, uint8_t tip_chunk_index);
 		void 			clearConfigArea(void);
+		void			forceReloadChunk(void)			{ chunk_in_data	= 65535; }
 	private:
 		bool 			readChunk(uint16_t chunk_index);
 		bool 			writeChunk(uint16_t chunk_index);
