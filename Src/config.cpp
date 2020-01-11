@@ -311,6 +311,27 @@ void CFG::initConfigArea(void) {
 	clearConfigArea();
 	setDefaults();
 	saveRecord(&a_cfg);
+	clearAllTipsCalibration();
+}
+
+void CFG::clearAllTipsCalibration(void) {
+	TIP tmp_tip;
+
+	for (uint8_t i = 0; i < TIPS::loaded(); ++i) {
+		if (tip_table[i].tip_chunk_index != NO_TIP_CHUNK) {
+			uint8_t m = tip_table[i].tip_mask;
+			// Check The tip is calibrated
+			if ((m & TIP_ACTIVE) && (m & TIP_CALIBRATED)) {
+				if (loadTipData(&tmp_tip, i) == EPR_OK) {
+					tmp_tip.mask 			= TIP_ACTIVE;	// Clear calibrated flag
+					tip_table[i].tip_mask	= TIP_ACTIVE;
+					if (saveTipData(&tmp_tip, i) != EPR_OK) {
+						break;								// Stop writing to EEPROM on the first IO error
+					}
+				}
+			}
+		}
+	}
 }
 
 /*

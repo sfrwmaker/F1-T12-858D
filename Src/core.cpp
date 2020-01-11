@@ -95,6 +95,7 @@ CFG_STATUS HW::init(void) {
 	iron.load(pp);
 	pp					=	cfg.pidParams(false);			// load Hot Air Gun PID parameters
 	hotgun.load(pp);
+	buzz.activate(cfg.isBuzzerEnabled());
 	return cfg_init;
 }
 

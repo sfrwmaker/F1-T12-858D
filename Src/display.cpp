@@ -8,9 +8,6 @@
 #include <string.h>
 #include <stdio.h>
 
-const uint16_t	d_width		= 128;        					// display width
-const uint16_t  d_height	= 64;        					// display height
-
 /*
  * Bitmaps
  */
@@ -346,21 +343,32 @@ void DSPL::mainShow(uint16_t t_set, uint16_t t_cur, int16_t t_amb, uint8_t p_app
 	U8G2::sendBuffer();
 }
 
-void DSPL::scrSave(uint16_t t_cur, uint16_t t_alter) {
+void DSPL::scrSave(SCR_MODE mode, uint16_t t_cur, uint16_t t_alter) {
+	static const char *modes[4] = {	"OFF", "IRON", "STBY", "GUN" };
 	U8G2::clearBuffer();
 	char buff[6];
-	uint8_t height = 30;
+	uint8_t height = 46;
+	uint8_t width  = 0;
+	U8G2::setFont(u8g_font_profont15r);
 	if (t_alter > 0) {
 		height += 16;
-		U8G2::setFont(u8g_font_profont15r);
+		width = U8G2::getStrWidth(modes[(uint8_t)mode]);
+		U8G2::drawStr(saver_center[0]-width/2, saver_center[1]-height/2+15, modes[(uint8_t)mode]);
 		sprintf(buff, "%3d", t_alter);
-		uint8_t width = U8G2::getStrWidth(buff);
+		width = U8G2::getStrWidth(buff);
+		U8G2::drawStr(saver_center[0]-width/2, saver_center[1]+height/2, buff);
+		U8G2::setFont(u8g2_font_kam28n);
+		sprintf(buff, "%3d", t_cur);
+		width   = U8G2::getStrWidth(buff);
+		U8G2::drawStr(saver_center[0]-width/2, saver_center[1]+15, buff);
+	} else {
+		width = U8G2::getStrWidth(modes[(uint8_t)mode]);
+		U8G2::drawStr(saver_center[0]-width/2, saver_center[1]-height/2+13, modes[(uint8_t)mode]);
+		U8G2::setFont(u8g2_font_kam28n);
+		sprintf(buff, "%3d", t_cur);
+		width   = U8G2::getStrWidth(buff);
 		U8G2::drawStr(saver_center[0]-width/2, saver_center[1]+height/2, buff);
 	}
-	U8G2::setFont(u8g2_font_kam28n);
-	sprintf(buff, "%3d", t_cur);
-	volatile uint8_t width   = U8G2::getStrWidth(buff);
-	U8G2::drawStr(saver_center[0]-width/2, saver_center[1]-height/2+30, buff);
 	U8G2::sendBuffer();
 
 	// calculate new message position
@@ -669,7 +677,7 @@ void DSPL::calibShow(const char* tip_name, uint8_t ref_point, uint16_t current_t
 	if (p_height > 0) {
 		U8G2::drawTriangle(d_width-5, 63, d_width-5, 63-p_height, d_width-6-p_height/4, 63-p_height);
 	}
-	if ((p_height < 30) && on) {
+	if ((p_height < 28) && on) {
 		width = U8G2::getStrWidth(ON);
 		U8G2::drawStr(d_width-width-5, 33, ON);
 	}

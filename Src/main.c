@@ -639,11 +639,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(ENCODER_L_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : ENCODER_B_Pin TILT_SW_Pin */
-  GPIO_InitStruct.Pin = ENCODER_B_Pin|TILT_SW_Pin;
+  /*Configure GPIO pin : ENCODER_B_Pin */
+  GPIO_InitStruct.Pin = ENCODER_B_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  HAL_GPIO_Init(ENCODER_B_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : OLED_RESET_Pin OLED_DC_Pin */
   GPIO_InitStruct.Pin = OLED_RESET_Pin|OLED_DC_Pin;
@@ -670,6 +670,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(OLED_CS_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : TILT_SW_Pin */
+  GPIO_InitStruct.Pin = TILT_SW_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(TILT_SW_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);

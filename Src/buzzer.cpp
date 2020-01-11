@@ -20,24 +20,24 @@ void BUZZER::playTone(uint16_t period_mks, uint16_t duration_ms) {
 }
 
 void BUZZER::shortBeep(void) {
-	//if (!enabled) return;
+	if (!enabled) return;
 	playTone(284, 160);
 }
 
 void BUZZER::doubleBeep(void) {
-	//if (!enabled) return;
+	if (!enabled) return;
 	playTone(284, 160);
 	HAL_Delay(100);
 	playTone(284, 160);
 }
 
 void BUZZER::lowBeep(void) {
-	//if (!enabled) return;
+	if (!enabled) return;
 	playTone(2840, 300);
 }
 
 void BUZZER::failedBeep(void) {
-	//if (!enabled) return;
+	if (!enabled) return;
 	playTone(284, 160);
 	HAL_Delay(50);
 	playTone(2840, 60);

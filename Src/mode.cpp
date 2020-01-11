@@ -81,7 +81,7 @@ MODE* MSTBY_IRON::loop(void) {
     if (button == 1) {										// The button pressed shortly
     	if (mode_spress) return mode_spress;
     } else if (button == 2) {								// The button was pressed for a long time
-    	BUZZER::shortBeep();
+    	pCore->buzz.shortBeep();
     	if (mode_lpress) return mode_lpress;
     }
 
@@ -99,7 +99,7 @@ MODE* MSTBY_IRON::loop(void) {
 
 	if (used && pIron->isCold()) {
     	pD->msgCold();
-		BUZZER::lowBeep();
+    	pCore->buzz.lowBeep();
 		clear_used_ms = HAL_GetTick() + 60000;
 		used = false;
 	}
@@ -118,7 +118,7 @@ MODE* MSTBY_IRON::loop(void) {
 		gun_temp = pCFG->tempToHuman(gun_temp, ambient, DEV_GUN);
 
     if (scrSaver()) {
-    	pD->scrSave(tempH, gun_temp);
+    	pD->scrSave(SCR_MODE_OFF, tempH, gun_temp);
     } else {
     	pD->mainShow(temp_setH, tempH, ambient, pIron->avgPowerPcnt(), pCFG->isCelsius(), pCFG->isTipCalibrated(), gun_temp, 0, false);
     }
@@ -314,7 +314,7 @@ MODE* MWORK_IRON::loop(void) {
 	    	ready = true;
 	    	ready_clear	= HAL_GetTick() + 2000;
 	    	pD->msgReady();
-	    	BUZZER::shortBeep();
+	    	pCore->buzz.shortBeep();
 	    	pD->mainShow(temp_setH, tempH, ambient, p, pCFG->isCelsius(), pCFG->isTipCalibrated(), gun_temp, 0, tilt_active);
 	    	return this;
 	    }
@@ -334,7 +334,7 @@ MODE* MWORK_IRON::loop(void) {
 			if (to < 100) {
 				pD->timeToOff(to);
 				if (!auto_off_notified) {
-					BUZZER::shortBeep();
+					pCore->buzz.shortBeep();
 					auto_off_notified = true;
 				}
 			}
@@ -349,7 +349,7 @@ MODE* MWORK_IRON::loop(void) {
 	}
 
 	if (scrSaver()) {
-	   	pD->scrSave(tempH, gun_temp);
+	   	pD->scrSave(lowpower_mode?SCR_MODE_IRON_STBY:SCR_MODE_IRON_ON, tempH, gun_temp);
 	} else {
 	   	pD->mainShow(temp_setH, tempH, ambient, p, pCFG->isCelsius(), pCFG->isTipCalibrated(), gun_temp, 0, tilt_active);
 	}
@@ -675,6 +675,7 @@ MODE* MMENU::loop(void) {
 				case 8:											// save
 					pCFG->setup(off_timeout, buzzer, celsius, keep_iron, low_temp, low_to, scr_saver);
 					pCFG->saveConfig();
+					pCore->buzz.activate(buzzer);
 					mode_menu_item = 0;
 					return mode_return;
 				case 10:										// calibrate IRON tip
@@ -996,12 +997,6 @@ MODE* MCALIB::loop(void) {
     	update_screen = 0;
     }
 
-	if (!pIron->isIronConnected()) {
-		PIDparam pp = pCFG->pidParams(use_iron);				// Restore default PID parameters
-		pIron->PID::load(pp);
-		return 0;												// Report an ERROR
-	}
-
 	if (button == 1) {											// The button pressed
 		if (tuning) {											// New reference temperature was entered
 			pIron->switchPower(false);
@@ -1071,7 +1066,7 @@ MODE* MCALIB::loop(void) {
 
 	if (tuning && (abs(temp_set - temp) <= 16) && (pIron->pwrDispersion() <= 200) && power > 1)  {
 		if (!ready) {
-			BUZZER::shortBeep();
+			pCore->buzz.shortBeep();
 			pEnc->write(tempH);
 			ready = true;
 	    }
@@ -1260,7 +1255,7 @@ MODE* MCALIB_MANUAL::loop(void) {
 	}
 	if (tuning && (abs(temp_set - temp) <= 16) && (pwr_disp <= pwr_disp_max) && power > 1)  {
 		if (!ready && temp_setready_ms && (HAL_GetTick() > temp_setready_ms)) {
-			BUZZER::shortBeep();
+			pCore->buzz.shortBeep();
 			ready 				= true;
 			temp_setready_ms	= 0;
 	    }
@@ -1431,8 +1426,10 @@ MODE* MTUNE::loop(void) {
 	if (button == 1) {											// The button pressed
 		powered = !powered;
 	    if (powered) pD->msgON(); else pD->msgOFF();
+	    update_screen = 0;
 	} else if (button == 2) {									// The button was pressed for a long time
-	    return mode_lpress;
+		pCore->buzz.shortBeep();
+		return mode_lpress;
 	}
 
 	if (!powered) power = 0;
@@ -1444,7 +1441,11 @@ MODE* MTUNE::loop(void) {
     		pHG->fixPower(power);
     	}
     	old_power = power;
+    	update_screen = 0;
     }
+
+    if (HAL_GetTick() < update_screen) return this;
+    update_screen = HAL_GetTick() + 500;
 
     uint16_t tune_temp = gun_temp_maxC;							// vars.cpp
     if (use_iron) tune_temp = iron_temp_maxC;
@@ -1460,7 +1461,6 @@ MODE* MTUNE::loop(void) {
 	}
 
     pD->tuneShow(tune_temp, temp, p_pcnt);
-    HAL_Delay(500);
     return this;
 }
 
@@ -1535,7 +1535,7 @@ MODE* MTPID::loop(void) {
 			else
 				pHG->switchPower(on);
 			if (on) pD->pidInit();							// Reset display graph history
-			BUZZER::shortBeep();
+			pCore->buzz.shortBeep();
 		}
 
 		if (old_index != index) {
@@ -1568,7 +1568,7 @@ MODE* MTPID::loop(void) {
 		} else if (button == 2) {							// Long button press: save the parameters and return to menu
 			PIDparam pp = pPID->dump();
 			pCFG->savePID(pp, use_iron);
-			BUZZER::shortBeep();
+			pCore->buzz.shortBeep();
 			return mode_lpress;
 		}
 
@@ -1713,7 +1713,7 @@ MODE* MWORK_GUN::loop(void) {
     if (!ready && (abs(temp_set - temp) < 50) && (pd <= 7) && (pwr > 0)) {
     	ready = true;
     	ready_clear	= HAL_GetTick() + 5000;
-    	BUZZER::shortBeep();
+    	pCore->buzz.shortBeep();
     	pD->msgReady();
     }
 
@@ -1728,7 +1728,7 @@ MODE* MWORK_GUN::loop(void) {
     	iron_temp = pCFG->tempToHuman(iron_temp, ambient, DEV_IRON);
 
     if (scrSaver()) {
-        pD->scrSave(tempH, iron_temp);
+        pD->scrSave(SCR_MODE_GUN_ON, tempH, iron_temp);
     } else {
     	pD->mainShow(temp_setH, tempH, ambient, pwr, pCFG->isCelsius(), pCFG->isTipCalibrated(), iron_temp, fan_angle+1, false);
     }
@@ -1806,7 +1806,7 @@ MODE* MENU_GUN::loop(void) {
 void MFAIL::init(void) {
 	RENC*	pEnc	= &pCore->encoder;
 	pEnc->reset(0, 0, 1, 1, 1, false);
-	BUZZER::failedBeep();
+	pCore->buzz.failedBeep();
 	update_screen = 0;
 }
 
