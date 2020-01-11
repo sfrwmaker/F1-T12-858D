@@ -107,6 +107,7 @@ class CFG : public EEPROM, public CFG_CORE, public TIP_CFG, public BUZZER {
 		void		saveConfig(void);
 		void		savePID(PIDparam &pp, bool iron = true);
 		void 		initConfigArea(void);
+		void		clearAllTipsCalibration(void);
 	private:
 		bool 		selectTip(uint8_t index);
 		uint8_t		buildTipTable(TIP_TABLE tt[]);

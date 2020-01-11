@@ -20,7 +20,7 @@
 #include "stat.h"
 #include "hw.h"
 
-class MODE : public BUZZER {
+class MODE {
 	public:
 		MODE(HW *pCore)										{ this->pCore = pCore; 	}
 		void			setup(MODE* return_mode, MODE* short_mode, MODE* long_mode);

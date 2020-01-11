@@ -10,9 +10,13 @@
 #include "oled.h"
 #include "config.h"
 
+typedef enum { SCR_MODE_OFF = 0, SCR_MODE_IRON_ON,  SCR_MODE_IRON_STBY, SCR_MODE_GUN_ON } SCR_MODE;
+
+const uint16_t	d_width		= 128;        					// display width
+const uint16_t  d_height	= 64;        					// display height
+
 class DSPL : public U8G2 {
 	public:
-//		DSPL(const u8g2_cb_t *rotation);
 		DSPL(void)	: U8G2()								{ }
 		void		init(const u8g2_cb_t *rotation);
 		void		mainInit(void)							{ msg_buff[0] = tip_name[0] = 0; }
@@ -39,7 +43,7 @@ class DSPL : public U8G2 {
 		void 		animateFan(uint8_t indx);
 		void		mainShow(uint16_t t_set, uint16_t t_cur, int16_t  t_amb, uint8_t p_applied,
 							bool is_celsius, bool tip_calibrated, uint16_t t_alter, uint8_t fan_index = 0, bool tilt_iron_used=false);
-		void		scrSave(uint16_t t_cur, uint16_t t_alter);
+		void		scrSave(SCR_MODE mode, uint16_t t_cur, uint16_t t_alter);
 		void 		tuneShow(uint16_t tune_temp, uint16_t temp, uint8_t pwr_pcnt);
 		void 		calibShow(const char* tip_name, uint8_t ref_point, uint16_t current_temp,
 							uint16_t real_temp, bool celsius, uint8_t power, bool on, bool ready, uint8_t int_temp_pcnt);
@@ -64,7 +68,7 @@ class DSPL : public U8G2 {
 		uint8_t		data_index			= 0;				// The index in the array to put new data
 		bool		full_buff			= false;			// Whether the history data buffer is full
 		// Screen saver data
-		uint16_t	saver_center[2] 	= {0};				// Current center of the output data
+		uint16_t	saver_center[2] 	= {d_width/2, d_height/2};	// Current center of the output data
 		int8_t		saver_speed[2]		= {1, 1};			// Current speed of center pointer
 };
 

@@ -30,6 +30,7 @@ class HW {
 		IRON		iron;
 		RENC		encoder;
 		HOTGUN		hotgun;
+		BUZZER		buzz;
 };
 
 #endif
