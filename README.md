@@ -12,3 +12,7 @@ Jan 2020. Second release created
   - Now the Hot Air Gun reed switch controls working mode
   - The soldering iron can keep working while Hot Air Gun mode
   - Screen saver feature implemented
+  
+Jan 2020. Some updates of the second release
+  - Minor changes in the controller schematics
+  - Buzzer is always on issue fixed
