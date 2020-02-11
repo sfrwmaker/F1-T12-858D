@@ -8678,7 +8678,7 @@ Source: http://ww1.microchip.com/downloads/en/DeviceDoc/21314g.pdf</description>
 <part name="R4" library="rcl" library_urn="urn:adsk.eagle:library:334" deviceset="R-EU_" device="0204/5" package3d_urn="urn:adsk.eagle:package:23488/1" value="470"/>
 <part name="JP11" library="pinhead" library_urn="urn:adsk.eagle:library:325" deviceset="PINHD-1X1" device="" package3d_urn="urn:adsk.eagle:package:22485/2" value="PA4"/>
 <part name="SUPPLY1" library="SparkFun-PowerSymbols" deviceset="3.3V" device=""/>
-<part name="IC3" library="linear" library_urn="urn:adsk.eagle:library:262" deviceset="MCP602" device="P" package3d_urn="urn:adsk.eagle:package:16409/2" value="LM328"/>
+<part name="IC3" library="linear" library_urn="urn:adsk.eagle:library:262" deviceset="MCP602" device="P" package3d_urn="urn:adsk.eagle:package:16409/2" value="LM358"/>
 </parts>
 <sheets>
 <sheet>

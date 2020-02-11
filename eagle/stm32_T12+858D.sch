@@ -15825,7 +15825,7 @@ Wickmann</description>
 <part name="R16" library="rcl" library_urn="urn:adsk.eagle:library:334" deviceset="R-EU_" device="0204/5" package3d_urn="urn:adsk.eagle:package:23488/1" value="10k"/>
 <part name="P+4" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="+24V" device=""/>
 <part name="R32" library="rcl" library_urn="urn:adsk.eagle:library:334" deviceset="R-EU_" device="0204/5" package3d_urn="urn:adsk.eagle:package:23488/1" value="100"/>
-<part name="IC3" library="linear" library_urn="urn:adsk.eagle:library:262" deviceset="MCP602" device="P" package3d_urn="urn:adsk.eagle:package:16409/2" value="LM328"/>
+<part name="IC3" library="linear" library_urn="urn:adsk.eagle:library:262" deviceset="MCP602" device="P" package3d_urn="urn:adsk.eagle:package:16409/2" value="LM358"/>
 <part name="IC2" library="linear" library_urn="urn:adsk.eagle:library:262" deviceset="MCP602" device="P" package3d_urn="urn:adsk.eagle:package:16409/2" value="AD823"/>
 <part name="GND14" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 <part name="JP2" library="pinhead" library_urn="urn:adsk.eagle:library:325" deviceset="PINHD-1X5" device="" package3d_urn="urn:adsk.eagle:package:22469/2" value="AIR GUN"/>

@@ -10837,7 +10837,7 @@ Source: http://www.bourns.com/data/global/PDFs/3223.PDF</description>
 <part name="R39" library="rcl" library_urn="urn:adsk.eagle:library:334" deviceset="R-EU_" device="0204/5" package3d_urn="urn:adsk.eagle:package:23488/1" value="100k"/>
 <part name="R28" library="rcl" library_urn="urn:adsk.eagle:library:334" deviceset="R-EU_" device="0204/5" package3d_urn="urn:adsk.eagle:package:23488/1" value="100k"/>
 <part name="+3V2" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="+3V3" device=""/>
-<part name="IC3" library="analog-devices" library_urn="urn:adsk.eagle:library:102" deviceset="AD822" device="N" package3d_urn="urn:adsk.eagle:package:3915/1" value="LM328"/>
+<part name="IC3" library="analog-devices" library_urn="urn:adsk.eagle:library:102" deviceset="AD822" device="N" package3d_urn="urn:adsk.eagle:package:3915/1" value="LM358"/>
 </parts>
 <sheets>
 <sheet>
