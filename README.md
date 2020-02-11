@@ -16,3 +16,5 @@ Jan 2020. Second release created
 Jan 2020. Some updates of the second release
   - Minor changes in the controller schematics
   - Buzzer is always on issue fixed
+
+Feb 11 2020. Error on Op-amp label on schematics fixed. LM328 - > LM 358
