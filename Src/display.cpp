@@ -892,7 +892,7 @@ void DSPL::debugShow(bool gun_mode, uint16_t power, uint16_t data[6]) {
 
 	U8G2::setFont(u8g_font_profont15r);
 	U8G2::clearBuffer();
-	if (gun_mode) U8G2::drawBitmap(0, 0, 2, 9, bmTiltActive);
+	if (gun_mode) U8G2::drawBitmap(0, 0, 2, 16, bmFan[0]);
 	sprintf(buff, "%5d", power);
 	U8G2::drawStr(0,  30, buff);
 	for (uint8_t i = 0; i < 4; ++i) {

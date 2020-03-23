@@ -55,9 +55,10 @@ static	MFAIL			fail(&core);
 static	MMBST			boost_setup(&core);
 static	MTPID			pid_tune(&core);
 static	MENU_GUN		gun_menu(&core, &calib_manual, &tune, &pid_tune);
-static	MMENU			main_menu(&core, &boost_setup, &calib_menu, &activate, &tune, &pid_tune, &gun_menu);
 static	MWORK_GUN		work_gun(&core);
+static  MABOUT			about(&core);
 static  MDEBUG			debug(&core);
+static	MMENU			main_menu(&core, &boost_setup, &calib_menu, &activate, &tune, &pid_tune, &gun_menu, &about);
 static	MODE*           pMode = &standby_iron;
 
 bool isACsine(void) 	{ return ac_sine; }
@@ -127,6 +128,8 @@ extern "C" void setup(void) {
 	pid_tune.setup(&standby_iron, &standby_iron, &standby_iron);
 	gun_menu.setup(&main_menu, &standby_iron, &standby_iron);
 	main_menu.setup(&standby_iron, &standby_iron, &standby_iron);
+	about.setup(&standby_iron, &standby_iron, &debug);
+	debug.setup(&standby_iron, &standby_iron, &standby_iron);
 
 	standby_iron.setGunMode(&work_gun);
 	work_iron.setGunMode(&work_gun);

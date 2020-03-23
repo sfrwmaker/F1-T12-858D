@@ -561,13 +561,15 @@ void MODE::setTimeout(uint16_t t) {
 }
 
 //---------------------- The Menu mode -------------------------------------------
-MMENU::MMENU(HW* pCore, MODE* m_boost, MODE* m_calib, MODE* m_act, MODE* m_tune, MODE* m_pid, MODE* m_gun_menu) : MODE(pCore) {
+MMENU::MMENU(HW* pCore, MODE* m_boost, MODE* m_calib, MODE* m_act, MODE* m_tune,
+		MODE* m_pid, MODE* m_gun_menu, MODE *m_about) : MODE(pCore) {
 	mode_menu_boost		= m_boost;
 	mode_calibrate_menu	= m_calib;
 	mode_activate_tips	= m_act;
 	mode_tune			= m_tune;
 	mode_tune_pid		= m_pid;
 	mode_gun_menu		= m_gun_menu;
+	mode_about			= m_about;
 }
 
 void MMENU::init(void) {
@@ -699,9 +701,7 @@ MODE* MMENU::loop(void) {
 					return mode_tune_pid;
 				case 16:										// About dialog
 					mode_menu_item = 0;
-					pD->showVersion();
-					HAL_Delay(10000);
-					return mode_return;
+					return mode_about;
 				default:										// cancel
 					pCFG->restoreConfig();
 					mode_menu_item = 0;
@@ -1814,7 +1814,6 @@ MODE* MFAIL::loop(void) {
 	DSPL*	pD		= &pCore->dspl;
 	RENC*	pEnc	= &pCore->encoder;
 	if (pEnc->buttonStatus()) {
-		//pD->resetScale();
 		return mode_return;
 	}
 
@@ -1825,14 +1824,35 @@ MODE* MFAIL::loop(void) {
 	return this;
 }
 
+//---------------------- The About dialog mode. Show about message ---------------
+void MABOUT::init(void) {
+	RENC*	pEnc	= &pCore->encoder;
+	pEnc->reset(0, 0, 1, 1, 1, false);
+	setTimeout(20);												// Show version for 20 seconds
+	update_screen = 0;
+}
+
+MODE* MABOUT::loop(void) {
+	DSPL*	pD		= &pCore->dspl;
+	RENC*	pEnc	= &pCore->encoder;
+	uint8_t b_status = pEnc->buttonStatus();
+	if (b_status == 1) {										// Short button press
+		return mode_return;										// Return to the main menu
+	} else if (b_status == 2) {
+		return mode_lpress;										// Activate debug mode
+	}
+
+	if (HAL_GetTick() < update_screen) return this;
+	update_screen = HAL_GetTick() + 60000;
+
+	pD->showVersion();
+	return this;
+}
+
 //---------------------- The Debug mode: display internal parameters ------------
 void MDEBUG::init(void) {
-	gun_mode = pCore->hotgun.isGunReedOpen();
-	if (gun_mode) {
-		pCore->encoder.reset(0, 0, max_fan_power,  1, 5, false);
-	} else {
-		pCore->encoder.reset(0, 0, max_iron_power, 1, 5, false);
-	}
+	gun_mode = false;
+	pCore->encoder.reset(0, 0, max_iron_power, 1, 5, false);
 	update_screen = 0;
 }
 
@@ -1848,13 +1868,13 @@ MODE* MDEBUG::loop(void) {
 		pHG->fanFixed(0);
 		old_power = 0;
 		if (gun_mode) {											// Switch to gun mode
-			pCore->encoder.reset(0, 0, max_fan_power,  1, 5, false);
+			pCore->encoder.reset(min_fan_speed, min_fan_speed, max_fan_power,  1, 5, false);
 		} else {
 			pCore->encoder.reset(0, 0, max_iron_power, 1, 5, false);
 		}
 	}
 
-	uint16_t pwr 	= pCore->encoder.read();
+	uint16_t pwr = pCore->encoder.read();
 	if (pwr != old_power) {
 		old_power = pwr;
 		update_screen = 0;
@@ -1864,6 +1884,11 @@ MODE* MDEBUG::loop(void) {
 			pIron->fixPower(pwr);
 		}
 	}
+
+	if (pCore->encoder.buttonStatus() == 2) {					// The button was pressed for a long time
+	   	return mode_lpress;
+	}
+
 	if (HAL_GetTick() < update_screen) return this;
 	update_screen = HAL_GetTick() + 500;
 

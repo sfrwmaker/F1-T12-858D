@@ -61,6 +61,7 @@ uint16_t HOTGUN::alternateTemp(void) {
 }
 
 void HOTGUN::switchPower(bool On) {
+	fan_off_time = 0;										// Disable fan offline by timeout
 	switch (mode) {
 		case POWER_OFF:
 			if (fanSpeed() == 0) {							// Not power supplied to the Fan
@@ -79,6 +80,7 @@ void HOTGUN::switchPower(bool On) {
 							shutdown();
 						} else {							// FAN && !On && connected && !cold
 							mode = POWER_COOLING;
+							fan_off_time = HAL_GetTick() + fan_off_timeout;
 						}
 					}
 				}
@@ -87,6 +89,7 @@ void HOTGUN::switchPower(bool On) {
 		case POWER_ON:
 			if (!On) {
 				mode = POWER_COOLING;
+				fan_off_time = HAL_GetTick() + fan_off_timeout;
 			}
 			break;
 		case POWER_FIXED:
@@ -99,6 +102,7 @@ void HOTGUN::switchPower(bool On) {
 							shutdown();
 						} else {							// FAN && !On && connected && !cold
 							mode = POWER_COOLING;
+							fan_off_time = HAL_GetTick() + fan_off_timeout;
 						}
 					}
 				}
@@ -187,6 +191,11 @@ uint16_t HOTGUN::power(void) {
 						TIM2->CCR2 = fan;
 					}
 				} else {									// FAN && !connected
+					if (fan_off_time) {						// The fan should be turned off in specific time
+						if (HAL_GetTick() < fan_off_time)	// It is not time to shutdown the fan
+							break;
+						fan_off_time = 0;
+					}
 					shutdown();
 				}
 			}
@@ -195,7 +204,7 @@ uint16_t HOTGUN::power(void) {
 			break;
 	}
 
-	// Only supply the power if the Hot Air Gun is connected
+	// Only supply the power to the heater if the Hot Air Gun is connected
 	if (TIM2->CCR2 < min_fan_speed || !isGunConnected()) p = 0;
 	h_power.update(p);
 	int32_t	ap	= h_power.average(p);
