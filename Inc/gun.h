@@ -65,6 +65,7 @@ class HOTGUN : public HOTGUN_HW, public PID {
 		bool		chill				= false;			// Chill the Hot Air gun if it is over heating
 		uint16_t	temp_set			= 0;				// The preset temperature of the hot air gun (internal units)
 		uint16_t	fan_speed			= 0;				// Preset fan speed
+		uint32_t	fan_off_time		= 0;				// Time when the fan should be powered off in cooling mode (ms)
 		EMP_AVERAGE	h_power;								// Exponential average of applied power
 		EMP_AVERAGE	h_temp;									// Exponential average of Hot Air Gun temperature
 		EMP_AVERAGE	d_power;								// Exponential average of power dispersion
@@ -76,6 +77,7 @@ class HOTGUN : public HOTGUN_HW, public PID {
 		const		uint16_t	max_cool_fan	= 1600;
 		const		uint16_t	min_working_fan	= 800;
         const       uint16_t    temp_gun_cold   = 100;		// The temperature of the cold Hot Air Gun
+        const		uint32_t	fan_off_timeout	= 5*60*1000;// The timeout to turn the fan off in cooling mode
 };
 
 #endif

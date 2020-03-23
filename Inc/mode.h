@@ -133,7 +133,7 @@ class MTACT : public MODE {
 //---------------------- The Menu mode -------------------------------------------
 class MMENU : public MODE {
 	public:
-		MMENU(HW* pCore, MODE* m_boost, MODE* m_calib, MODE* m_act, MODE* m_tune, MODE* m_pid, MODE* m_gun_menu);
+		MMENU(HW* pCore, MODE* m_boost, MODE* m_calib, MODE* m_act, MODE* m_tune, MODE* m_pid, MODE* m_gun_menu, MODE *m_about);
 		virtual void	init(void);
 		virtual MODE*	loop(void);
 	private:
@@ -143,6 +143,7 @@ class MMENU : public MODE {
 		MODE*		mode_tune;
 		MODE*		mode_tune_pid;
 		MODE*		mode_gun_menu;
+		MODE*		mode_about;
 		uint8_t		off_timeout		= 0;					// Automatic switch off timeout in minutes or 0 to disable
 		uint16_t	low_temp		= 0;					// The low power temperature (Celsius) 0 - disable tilt sensor
 		uint8_t		low_to			= 0;					// The low power timeout, seconds
@@ -328,6 +329,13 @@ class MFAIL : public MODE {
 		virtual MODE*	loop(void);
 };
 
+//---------------------- The About dialog mode. Show about message ---------------
+class MABOUT : public MODE {
+	public:
+		MABOUT(HW *pCore) : MODE(pCore)						{ }
+		virtual void	init(void);
+		virtual MODE*	loop(void);
+};
 
 //---------------------- The Debug mode: display internal parameters ------------
 class MDEBUG : public MODE {
@@ -336,9 +344,10 @@ class MDEBUG : public MODE {
 		virtual void	init(void);
 		virtual MODE*	loop(void);
 	private:
-		uint16_t		old_power 		= 0;
-		bool			gun_mode		= false;
+		uint16_t		old_power 		= 0;				// Old encoder value
+		bool			gun_mode		= false;			// Gun/iron mode
 		const uint16_t	max_iron_power 	= 300;
+		const uint16_t	min_fan_speed	= 600;
 		const uint16_t	max_fan_power 	= 1999;
 };
 
