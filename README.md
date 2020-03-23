@@ -18,3 +18,7 @@ Jan 2020. Some updates of the second release
   - Buzzer is always on issue fixed
 
 Feb 11 2020. Error on Op-amp label on schematics fixed. LM328 - > LM 358
+
+Mar 23 2020. New firmware release, 2.02. See detailed description on the project page.
+  - Updated Hot Air Gun cooling procedure
+  - Debug mode added allowing monitoring of the internal parameters 
