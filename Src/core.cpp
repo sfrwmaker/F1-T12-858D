@@ -117,7 +117,7 @@ extern "C" void setup(void) {
 	standby_iron.setup(&select, &work_iron, &main_menu);
 	work_iron.setup(&standby_iron, &standby_iron, &boost);
 	boost.setup(&work_iron, &work_iron, &work_iron);
-	select.setup(&standby_iron, &activate, &standby_iron);
+	select.setup(&standby_iron, &activate, &main_menu);
 	activate.setup(&standby_iron, &standby_iron, &main_menu);
 	calib_auto.setup(&standby_iron, &standby_iron, &standby_iron);
 	calib_manual.setup(&calib_menu, &standby_iron, &standby_iron);

@@ -112,6 +112,7 @@ uint16_t CFG::tempToHuman(uint16_t temp, int16_t ambient, CFG_TEMP_DEVICE force_
 		tempH = celsiusToFahrenheit(tempH);
 	return tempH;
 }
+
 // Translate the temperature from human readable units (Celsius or Fahrenheit) to the internal units
 uint16_t CFG::humanToTemp(uint16_t t, int16_t ambient) {
 	int d = ambient - TIP_CFG::ambientTemp();
@@ -468,7 +469,7 @@ void CFG_CORE::correctConfig(RECORD *cfg) {
 }
 
 // Apply main configuration parameters: automatic off timeout, buzzer and temperature units
-void CFG_CORE::setup(uint8_t off_timeout, bool buzzer, bool celsius, bool keep_iron, uint16_t low_temp, uint8_t low_to, uint8_t scr_saver) {
+void CFG_CORE::setup(uint8_t off_timeout, bool buzzer, bool celsius, bool keep_iron, bool reed, uint16_t low_temp, uint8_t low_to, uint8_t scr_saver) {
 	bool cfg_celsius		= a_cfg.bit_mask & CFG_CELSIUS;
 	a_cfg.off_timeout		= off_timeout;
 	a_cfg.scr_save_timeout	= scr_saver;
@@ -488,6 +489,7 @@ void CFG_CORE::setup(uint8_t off_timeout, bool buzzer, bool celsius, bool keep_i
 	if (celsius)	a_cfg.bit_mask |= CFG_CELSIUS;
 	if (buzzer)		a_cfg.bit_mask |= CFG_BUZZER;
 	if (keep_iron)	a_cfg.bit_mask |= CFG_KEEP_IRON;
+	if (reed)		a_cfg.bit_mask |= CFG_SWITCH;
 }
 
 void CFG_CORE::savePresetTempHuman(uint16_t temp_set) {

@@ -10,11 +10,11 @@
 #include "tools.h"
 
 void IRON_HW::init(void) {
-	tilt_switch	= false;
+	tilt_changed	= false;
 	t_iron_short.length(iron_emp_coeff);
 	t_amb.length(ambient_emp_coeff);
 	c_iron.init(iron_sw_len,	iron_off_value,	iron_on_value);
-	sw_iron.init(sw_avg_len,	sw_off_value, 	sw_on_value);
+	sw_iron.init(sw_tilt_len,	sw_off_value, 	sw_on_value);
 }
 
 /*
@@ -34,7 +34,7 @@ static int 		cached_ambient 		= 0;					// Previous value of the temperature
 
 	average = t_amb.read();
 
-	if (average < 4090) {									// prevent division by zero
+	if (average < max_ambient_value) {						// prevent division by zero; About -30 degrees
 		// convert the value to resistance
 		float resistance = 4095.0 / (float)average - 1.0;
 		resistance = (float)add_resistor / resistance;
@@ -45,9 +45,9 @@ static int 		cached_ambient 		= 0;					// Previous value of the temperature
 		steinhart += 1.0 / (normal_temp[1] + 273.15);  		// + (1/To)
 		steinhart = 1.0 / steinhart;						// Invert
 		steinhart -= 273.15;								// convert to Celsius
-		cached_ambient = round(steinhart);
+		cached_ambient	= round(steinhart);
 	} else {
-		cached_ambient	= -273;
+		cached_ambient	= default_ambient;
 	}
 	return cached_ambient;
 }
@@ -57,21 +57,21 @@ static int 		cached_ambient 		= 0;					// Previous value of the temperature
 void IRON_HW::checkSWStatus(void) {
 	if (HAL_GetTick() > check_sw) {
 		check_sw = HAL_GetTick() + check_sw_period;
-		if (c_iron.status()) {								// Current through the IRON is registered
-			uint16_t on = 0;
-			if (GPIO_PIN_SET == HAL_GPIO_ReadPin(TILT_SW_GPIO_Port, TILT_SW_Pin))	on = 100;
-			sw_iron.update(on);								// 0 - short, 100 - open
-		}
+		uint16_t on = 0;									// 0 - short, 100 - open
+		if (GPIO_PIN_SET == HAL_GPIO_ReadPin(TILT_SW_GPIO_Port, TILT_SW_Pin))	on = 100;
+		bool status = sw_iron.status();						// previous switch status
+		sw_iron.update(on);
+		if (status != sw_iron.status())						// Switch status has been changed
+			tilt_changed = true;							// Set changed flag to on. The flag will be cleared in isIronTiltSwitch()
 	}
 }
 
-bool IRON_HW::isIronVibroSwitch(void) {
-	bool new_status = isIronTiltSwitch();
-	if (new_status != tilt_switch) {
-		tilt_switch = new_status;
-		return true;
-	}
-	return false;
+bool IRON_HW::isIronTiltSwitch(bool reed) {
+    bool ret = tilt_changed;
+    tilt_changed = false;									// Clear changed flag
+	if (reed)
+		return sw_iron.status();							// TRUE if switch is open (IRON in use)
+	return ret;												// TRUE if tilt status has been changed
 }
 
 void IRON::init(void) {

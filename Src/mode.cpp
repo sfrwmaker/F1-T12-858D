@@ -46,6 +46,7 @@ void MSTBY_IRON::init(void) {
 		t_max	= celsiusToFahrenheit(t_max);
 	}
 	pEnc->reset(temp_setH, t_min, t_max, 1, 5, false);
+	no_handle		= false;								// By default the soldering IRON handle is connected
 	old_temp_set	= 0;
 	update_screen	= 0;									// Force to redraw the screen
 	clear_used_ms 	= 0;
@@ -67,7 +68,8 @@ MODE* MSTBY_IRON::loop(void) {
     	gun_work->keepIronWorking(false);					// Do not switch on the IRON
     	return gun_work;
     }
-    if (!pIron->isIronConnected() && isACsine())			// IRON is disconnected, Tip selection mode
+	// if IRON is disconnected, activate Tip selection mode
+    if (!pIron->noAmbientSensor() && !pIron->isIronConnected() && isACsine())
     	return mode_return;
 
     // In the Screen saver mode, any rotary encoder change should be ignored
@@ -109,19 +111,39 @@ MODE* MSTBY_IRON::loop(void) {
 		pD->msgOFF();
 	}
 
-	int16_t	 	ambient		= pIron->ambientTemp();
-    uint16_t	temp  		= pIron->averageTemp();
-    uint16_t	tempH 		= pCFG->tempToHuman(temp, ambient);
-	uint16_t	temp_setH	= pCFG->tempPresetHuman();
-	uint16_t	gun_temp	= pCore->hotgun.alternateTemp();
-	if (gun_temp > 0)
-		gun_temp = pCFG->tempToHuman(gun_temp, ambient, DEV_GUN);
-
-    if (scrSaver()) {
-    	pD->scrSave(SCR_MODE_OFF, tempH, gun_temp);
-    } else {
-    	pD->mainShow(temp_setH, tempH, ambient, pIron->avgPowerPcnt(), pCFG->isCelsius(), pCFG->isTipCalibrated(), gun_temp, 0, false);
-    }
+	if (pIron->noAmbientSensor()) {							// IRON handle disconnected
+		if (!no_handle) {
+			no_handle = true;
+			pCFG->activateGun(true);						// Activate Hot Air Gun
+			pD->tip(pCFG->tipName());
+		}
+		int16_t  temp 		= pHG->averageTemp();
+		uint16_t temp_setH	= pCFG->gunTempPreset();
+		uint16_t tempH		= pCFG->tempToHuman(temp, default_ambient);
+		if (scrSaver()) {
+		    pD->scrSave(SCR_MODE_GUN_ON, tempH, 0);
+		} else {
+		    	pD->mainShow(temp_setH, tempH, default_ambient, pHG->avgPowerPcnt(), pCFG->isCelsius(), pCFG->isTipCalibrated(), 0, 1, false);
+		}
+	} else {												// IRON handle connected again
+		if (no_handle) {
+			no_handle = false;
+			pCFG->activateGun(false);						// Activate Soldering IRON
+			pD->tip(pCFG->tipName());
+		}
+		int16_t	 	ambient		= pIron->ambientTemp();
+		uint16_t	temp  		= pIron->averageTemp();
+		uint16_t	tempH 		= pCFG->tempToHuman(temp, ambient);
+		uint16_t	temp_setH	= pCFG->tempPresetHuman();
+		uint16_t	gun_temp	= pCore->hotgun.alternateTemp();
+		if (gun_temp > 0)
+			gun_temp = pCFG->tempToHuman(gun_temp, ambient, DEV_GUN);
+		if (scrSaver()) {
+			pD->scrSave(SCR_MODE_OFF, tempH, gun_temp);
+		} else {
+			pD->mainShow(temp_setH, tempH, ambient, pIron->avgPowerPcnt(), pCFG->isCelsius(), pCFG->isTipCalibrated(), gun_temp, 0, false);
+		}
+	}
     return this;
 }
 
@@ -186,12 +208,13 @@ void MWORK_IRON::hwTimeout(uint16_t low_temp, bool tilt_active) {
 			lowpower_mode	= false;
 			ready 			= false;
 			time_to_return	= 0;							// Disable to return to the POWER OFF mode
+			pCore->buzz.shortBeep();
 			pD->msgON();
 		}
 	} else if (!lowpower_mode) {
 		if (lowpower_time) {
 			if (now_ms >= lowpower_time) {
-				preset_temp			= pIron->presetTemp();		// Save the current preset temperature
+				preset_temp			= pIron->presetTemp();	// Save the current preset temperature
 				int16_t  ambient	= pIron->ambientTemp();
 				uint16_t temp_low	= pCFG->getLowTemp();
 				uint16_t temp 		= pCFG->humanToTemp(temp_low, ambient);
@@ -306,7 +329,8 @@ MODE* MWORK_IRON::loop(void) {
 
 	uint16_t low_temp = pCFG->getLowTemp();					// 'Standby temperature' setup in the main menu
 	bool tilt_active = false;
-	if (low_temp) tilt_active = pIron->isIronTiltSwitch();	// True if iron is in upright position
+	if (low_temp)
+		tilt_active = pIron->isIronTiltSwitch(pCFG->isReedType());	// True if iron was used
 
 	// Check the IRON reaches the preset temperature
 	if ((abs(temp_set - temp) < 6) && (td <= 500) && (ap > 0))  {
@@ -454,7 +478,11 @@ MODE* MSLCT::loop(void) {
 	}
 	uint8_t	button = pEnc->buttonStatus();
 
-    if (pIron->isIronConnected() || !isACsine()) {
+    if (pIron->noAmbientSensor()) {
+    	return mode_return;
+    }
+
+	if (pIron->isIronConnected() || !isACsine()) {
 		// Prevent bouncing event, when the IRON connection restored back too quickly.
 		if (tip_begin_select && (HAL_GetTick() - tip_begin_select) < 1000) {
 			return 0;
@@ -465,7 +493,7 @@ MODE* MSLCT::loop(void) {
 		return mode_return;
 	}
 
-	if (button == 2) {										// The button was pressed for a long time
+    if (button == 2) {										// The button was pressed for a long time
 	    return mode_lpress;
 	}
 
@@ -582,10 +610,11 @@ void MMENU::init(void) {
 	buzzer		= pCFG->isBuzzerEnabled();
 	celsius		= pCFG->isCelsius();
 	keep_iron	= pCFG->isKeepIron();
+	reed		= pCFG->isReedType();
 	scr_saver	= pCFG->getScrTo();
 	set_param	= 0;
 	if (!pCFG->isTipCalibrated())
-		mode_menu_item	= 10;									// Select calibration menu item
+		mode_menu_item	= 11;									// Select calibration menu item
 	pEnc->reset(mode_menu_item, 0, m_len-1, 1, 1, true);
 	update_screen = 0;
 }
@@ -602,24 +631,24 @@ MODE* MMENU::loop(void) {
 	if (mode_menu_item != item) {								// The encoder has been rotated
 		mode_menu_item = item;
 		switch (set_param) {									// Setup new value of the parameter in place
-			case 4:												// Setup auto off timeout
+			case 5:												// Setup auto off timeout
 				if (item) {
 					off_timeout	= item + 2;
 				} else {
 					off_timeout = 0;
 				}
 				break;
-			case 5:												// Setup low power (standby) temperature
+			case 6:												// Setup low power (standby) temperature
 				if (item >= min_standby_C) {
 					low_temp = item;
 				} else {
 					low_temp = 0;
 				}
 				break;
-			case 6:												// Setup low power (standby) timeout
+			case 7:												// Setup low power (standby) timeout
 				low_to	= item;
 				break;
-			case 7:												// Setup Screen saver timeout
+			case 8:												// Setup Screen saver timeout
 				if (item) {
 					scr_saver = item + 2;
 				} else {
@@ -637,7 +666,7 @@ MODE* MMENU::loop(void) {
 		if (button > 0) {										// The button was pressed
 			switch (item) {
 				case 0:											// Boost parameters
-					pCFG->setup(off_timeout, buzzer, celsius, keep_iron, low_temp, low_to, scr_saver);
+					pCFG->setup(off_timeout, buzzer, celsius, keep_iron, reed, low_temp, low_to, scr_saver);
 					return mode_menu_boost;
 				case 1:											// units C/F
 					celsius	= !celsius;
@@ -648,7 +677,10 @@ MODE* MMENU::loop(void) {
 				case 3:											// Keep iron ON/OFF
 					keep_iron =!keep_iron;
 					break;
-				case 4:											// auto off timeout
+				case 4:											// REED/TILT
+					reed = !reed;
+					break;
+				case 5:											// auto off timeout
 					{
 					set_param = item;
 					uint8_t to = off_timeout;
@@ -656,17 +688,17 @@ MODE* MMENU::loop(void) {
 					pEnc->reset(to, 0, 28, 1, 5, false);
 					break;
 					}
-				case 5:											// Standby temperature
+				case 6:											// Standby temperature
 					{
 					set_param = item;
 					pEnc->reset(low_temp, min_standby_C-1, max_standby_C, 1, 5, false);
 					break;
 					}
-				case 6:											// Standby timeout
+				case 7:											// Standby timeout
 					set_param = item;
 					pEnc->reset(low_to, 5, 240, 1, 5, false);
 					break;
-				case 7:											// Screen saver timeout
+				case 8:											// Screen saver timeout
 					{
 					set_param = item;
 					uint8_t to = scr_saver;
@@ -674,32 +706,32 @@ MODE* MMENU::loop(void) {
 					pEnc->reset(to, 0, 58, 1, 5, false);
 					break;
 					}
-				case 8:											// save
-					pCFG->setup(off_timeout, buzzer, celsius, keep_iron, low_temp, low_to, scr_saver);
+				case 9:											// save
+					pCFG->setup(off_timeout, buzzer, celsius, keep_iron, reed, low_temp, low_to, scr_saver);
 					pCFG->saveConfig();
 					pCore->buzz.activate(buzzer);
 					mode_menu_item = 0;
 					return mode_return;
-				case 10:										// calibrate IRON tip
+				case 11:										// calibrate IRON tip
 					mode_menu_item = 8;
 					return mode_calibrate_menu;
-				case 11:										// activate tips
+				case 12:										// activate tips
 					mode_menu_item = 0;							// We will not return from tip activation mode to this menu
 					return mode_activate_tips;
-				case 12:										// tune the IRON potentiometer
+				case 13:										// tune the IRON potentiometer
 					mode_menu_item = 0;							// We will not return from tune mode to this menu
 					mode_tune->ironMode(true);
 					return mode_tune;
-				case 13:										// Hot Air Gun menu
+				case 14:										// Hot Air Gun menu
 					mode_menu_item = 11;						// We will return from next level menu here
 					return mode_gun_menu;
-				case 14:										// Initialize the configuration
+				case 15:										// Initialize the configuration
 					pCFG->initConfigArea();
 					mode_menu_item = 0;							// We will not return from tune mode to this menu
 					return mode_return;
-				case 15:										// Tune PID
+				case 16:										// Tune PID
 					return mode_tune_pid;
-				case 16:										// About dialog
+				case 17:										// About dialog
 					mode_menu_item = 0;
 					return mode_about;
 				default:										// cancel
@@ -719,7 +751,7 @@ MODE* MMENU::loop(void) {
 
 	// Prepare to modify menu item
 	bool modify = false;
-	if (set_param >= 4 && set_param <= 7) {
+	if (set_param >= 5 && set_param <= 8) {
 		item = set_param;
 		modify 	= true;
 	}
@@ -751,14 +783,20 @@ MODE* MMENU::loop(void) {
 			else
 				sprintf(item_value, "OFF");
 			break;
-		case 4:													// auto off timeout
+		case 4:													// TILT/REED
+			if (reed)
+				sprintf(item_value, "REED");
+			else
+				sprintf(item_value, "TILT");
+			break;
+		case 5:													// auto off timeout
 			if (off_timeout) {
 				sprintf(item_value, "%2d min", off_timeout);
 			} else {
 				sprintf(item_value, "OFF");
 			}
 			break;
-		case 5:													// Standby temperature
+		case 6:													// Standby temperature
 			if (low_temp) {
 				if (celsius) {
 					sprintf(item_value, "%3d C", low_temp);
@@ -769,13 +807,13 @@ MODE* MMENU::loop(void) {
 				sprintf(item_value, "OFF");
 			}
 			break;
-		case 6:													// Standby timeout
+		case 7:													// Standby timeout
 			if (low_temp)
 				sprintf(item_value, "%3d s", low_to);
 			else
 				sprintf(item_value, "OFF");
 			break;
-		case 7:
+		case 8:
 			if (scr_saver) {
 				sprintf(item_value, "%2d min", scr_saver);
 			} else {
@@ -1829,6 +1867,7 @@ void MABOUT::init(void) {
 	RENC*	pEnc	= &pCore->encoder;
 	pEnc->reset(0, 0, 1, 1, 1, false);
 	setTimeout(20);												// Show version for 20 seconds
+	resetTimeout();
 	update_screen = 0;
 }
 
@@ -1892,14 +1931,18 @@ MODE* MDEBUG::loop(void) {
 	if (HAL_GetTick() < update_screen) return this;
 	update_screen = HAL_GetTick() + 500;
 
-	uint16_t data[6];
-	data[0]		= pIron->temp();
-	data[1] 	= pIron->ironCurrent();
-	data[2]		= pHG->averageTemp();
-	data[3]		= pHG->fanCurrent();
-	data[4]		= pIron->isIronConnected();
-	data[5]		= pHG->isGunConnected();
-	pD->debugShow(gun_mode, pwr, data);
+	uint16_t data[4];
+	data[2]		= pIron->ambientInternal();
+	if (gun_mode) {
+		data[0]		= pHG->averageTemp();
+		data[1]		= pHG->fanCurrent();
+		data[3]		= 0;
+	} else {
+		data[0]		= pIron->temp();
+		data[1] 	= pIron->ironCurrent();
+		data[3]		= pIron->tiltInternal();
+	}
+	pD->debugShow(gun_mode, pwr, pIron->isIronConnected(), pHG->isGunConnected(), data);
 	return this;
 }
 

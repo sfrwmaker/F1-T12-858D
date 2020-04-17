@@ -887,9 +887,8 @@ void DSPL::errorMessage(const char *msg) {
 	}
 }
 
-void DSPL::debugShow(bool gun_mode, uint16_t power, uint16_t data[6]) {
+void DSPL::debugShow(bool gun_mode, uint16_t power, bool iron, bool gun, uint16_t data[4]) {
 	char buff[14];
-
 	U8G2::setFont(u8g_font_profont15r);
 	U8G2::clearBuffer();
 	if (gun_mode) U8G2::drawBitmap(0, 0, 2, 16, bmFan[0]);
@@ -899,8 +898,8 @@ void DSPL::debugShow(bool gun_mode, uint16_t power, uint16_t data[6]) {
 		sprintf(buff, "%5d", data[i]);
 		U8G2::drawStr(60,  15*(i+1), buff);
 	}
-	sprintf(buff, "(%c-%c)", data[4]>0?'i':' ', data[5]>0?'g':' ');
-	U8G2::drawStr(5,  60, buff);
+	sprintf(buff, "(%c-%c)", iron?'i':' ', gun?'g':' ');
+	U8G2::drawStr(5,  62, buff);
 	U8G2::sendBuffer();
 }
 
