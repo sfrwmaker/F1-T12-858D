@@ -69,6 +69,7 @@ class MSTBY_IRON : public MODE, SCRSAVER {
 		uint32_t		clear_used_ms	= 0;				// Time in ms when used flag should be cleared (if > 0)
 		bool			used			= false;			// Whether the IRON was used (was hot)
 		bool			cool_notified	= 0;				// Whether there was cold notification played
+		bool			no_handle		= false;			// Whether soldering iron handle disconnected (no ambient sensor)
 		uint16_t 		old_temp_set	= 0;
 };
 
@@ -151,14 +152,16 @@ class MMENU : public MODE {
 		bool		buzzer			= true;					// Whether the buzzer is enabled
 		bool		celsius			= true;					// Temperature units: C/F
 		bool		keep_iron		= false;				// Keep the iron working While in Hot Air Gun Mode
+		bool		reed			= false;				// IRON switch type: reed/tilt
 		uint8_t		set_param		= 0;					// The index of the modifying parameter
-		uint8_t		m_len			= 17;					// The menu length
+		uint8_t		m_len			= 18;					// The menu length
 		uint8_t		mode_menu_item 	= 1;					// Save active menu element index to return back later
-		const char* menu_name[17] = {
+		const char* menu_name[18] = {
 			"boost setup",
 			"units",
 			"buzzer",
 			"keep iron",
+			"switch type",
 			"auto off",
 			"standby temp",
 			"standby time",

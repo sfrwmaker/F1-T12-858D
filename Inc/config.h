@@ -29,6 +29,7 @@ class CFG_CORE: public TIPS {
 		bool		isCelsius(void) 					{ return a_cfg.bit_mask & CFG_CELSIUS;	}
 		bool		isBuzzerEnabled(void)				{ return a_cfg.bit_mask & CFG_BUZZER; 	}
 		bool		isKeepIron(void)					{ return a_cfg.bit_mask & CFG_KEEP_IRON;}
+		bool		isReedType(void)					{ return a_cfg.bit_mask & CFG_SWITCH;	}
 		uint16_t	tempPresetHuman(void) 				{ return a_cfg.iron_temp;				}
 		uint16_t	gunTempPreset(void)					{ return a_cfg.gun_temp;				}
 		uint16_t	gunFanPreset(void)					{ return a_cfg.gun_fan_speed;			}
@@ -36,7 +37,7 @@ class CFG_CORE: public TIPS {
 		uint16_t	getLowTemp(void)					{ return a_cfg.low_temp; 				}
 		uint8_t		getLowTO(void)						{ return a_cfg.low_to; 					}
 		uint8_t		getScrTo(void)						{ return a_cfg.scr_save_timeout;		}
-		void		setup(uint8_t off_timeout, bool buzzer, bool celsius, bool keep_iron, uint16_t low_temp, uint8_t low_to, uint8_t scr_saver);
+		void		setup(uint8_t off_timeout, bool buzzer, bool celsius, bool keep_iron, bool reed, uint16_t low_temp, uint8_t low_to, uint8_t scr_saver);
 		void 		savePresetTempHuman(uint16_t temp_set);
 		void		saveGunPreset(uint16_t temp, uint16_t fan = 0);
 		uint8_t		boostTemp(void);
@@ -114,7 +115,7 @@ class CFG : public EEPROM, public CFG_CORE, public TIP_CFG, public BUZZER {
 		char* 		buildFullTipName(char tip_name[tip_name_sz], const uint8_t index);
 		uint8_t		freeTipChunkIndex(void);
 		bool 		isTipCorrect(uint8_t tip_chunk_index, TIP *tip);
-		TIP_TABLE	*tip_table = 0;							// Tip table - chunk number of the tip or 0xFF if does not exist in the EEPROM
+		TIP_TABLE	*tip_table = 0;						// Tip table - chunk number of the tip or 0xFF if does not exist in the EEPROM
 };
 
 #endif

@@ -53,7 +53,7 @@ class DSPL : public U8G2 {
 		void 		menuItemShow(const char* title, const char* item, const char* value, bool modify);
 		void 		errorShow(void);
 		void		errorMessage(const char *msg);
-		void 		debugShow(bool gun_mode, uint16_t power, uint16_t data[6]);
+		void 		debugShow(bool gun_mode, uint16_t power, bool iron, bool gun, uint16_t data[4]);
 		void 		showVersion(void);
 	private:
 		char      	msg_buff[8]			= {0};             // the buffer for the message in top right corner

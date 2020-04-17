@@ -14,8 +14,9 @@
  * CFG_CELSIUS		- The temperature units: Celsius (1) or Fahrenheit (0)
  * CFG_BUZZER		- Is the Buzzer Enabled (1)
  * CFG_KEEP_IRON	- Is keep the iron working while in Hot Air Gun mode
+ * CFG_SWITCH		- Switch type: Tilt (0) or REED (1)
  */
-typedef enum { CFG_CELSIUS = 1, CFG_BUZZER = 2, CFG_KEEP_IRON = 4 } CFG_BIT_MASK;
+typedef enum { CFG_CELSIUS = 1, CFG_BUZZER = 2, CFG_KEEP_IRON = 4, CFG_SWITCH = 8 } CFG_BIT_MASK;
 
 /* Configuration record in the EEPROM (after the tip table) has the following format:
  * Records are aligned by 2**n bytes (in this case, 32 bytes)
