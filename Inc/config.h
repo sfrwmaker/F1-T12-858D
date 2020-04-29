@@ -35,7 +35,7 @@ class CFG_CORE: public TIPS {
 		uint16_t	gunFanPreset(void)					{ return a_cfg.gun_fan_speed;			}
 		uint8_t		getOffTimeout(void) 				{ return a_cfg.off_timeout; 			}
 		uint16_t	getLowTemp(void)					{ return a_cfg.low_temp; 				}
-		uint8_t		getLowTO(void)						{ return a_cfg.low_to; 					}
+		uint8_t		getLowTO(void)						{ return a_cfg.low_to; 					}	// 5-seconds intervals
 		uint8_t		getScrTo(void)						{ return a_cfg.scr_save_timeout;		}
 		void		setup(uint8_t off_timeout, bool buzzer, bool celsius, bool keep_iron, bool reed, uint16_t low_temp, uint8_t low_to, uint8_t scr_saver);
 		void 		savePresetTempHuman(uint16_t temp_set);

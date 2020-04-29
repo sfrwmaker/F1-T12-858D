@@ -91,7 +91,6 @@ class MWORK_IRON : public MODE, SCRSAVER {
 		bool			lowpower_mode	= false;			// Whether hardware low power mode using tilt switch
 		uint32_t		ready_clear		= 0;				// Time when to clean 'Ready' message
 		uint32_t		lowpower_time	= 0;				// Time when switch to standby power mode
-		uint16_t		preset_temp		= 0;				// Save iron preset temp. in lower temp mode
 		uint16_t 		old_temp_set	= 0;
 		const uint16_t	period			= 500;				// Redraw display period (ms)
 		const uint8_t	ec				= 5;				// The exponential average coefficient

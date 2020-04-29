@@ -70,8 +70,10 @@ class IRON : public IRON_HW, public PID, public PIDTUNE {
 		void 		adjust(uint16_t t);						// Adjust preset temperature depending on ambient temperature
 		uint16_t	power(int32_t t);						// Required power to keep preset temperature
 		void		reset(void);							// Iron is disconnected, clear the temp history
+		void        lowPowerMode(uint16_t t);				// Activate low power mode (preset temp. or 0 to return to standard mode)
 	private:
 		uint16_t 	temp_set			= 0;				// The temperature that should be kept
+		uint16_t	temp_low			= 0;				// The temperature in low power mode (if not zero)
 		uint16_t    fix_power			= 0;				// Fixed power value of the IRON (or zero if off)
 		volatile 	PowerMode	mode	= POWER_OFF;		// Working mode of the IRON
 		volatile 	bool chill			= false;			// Whether the IRON should be cooled (preset temp is lower than current)

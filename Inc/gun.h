@@ -59,7 +59,7 @@ class HOTGUN : public HOTGUN_HW, public PID {
 		uint8_t		presetFanPcnt(void);
 		uint16_t    power(void);							// Required Hot Air Gun power to keep the preset temperature
     private:
-		void		shutdown(void)							{ mode = POWER_OFF; TIM2->CCR2 = 0;				}
+		void		shutdown(void);
 		PowerMode	mode				= POWER_OFF;
 		uint8_t    	fix_power			= 0;				// Fixed power value of the Hot Air Gun (or zero if off)
 		bool		chill				= false;			// Chill the Hot Air gun if it is over heating

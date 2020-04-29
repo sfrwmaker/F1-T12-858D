@@ -23,7 +23,7 @@ class RENC {
 		uint8_t		getIncrement(void)                 		{ return increment; }
 		int16_t 	read(void)                          	{ return pos; }
 	private:
-		EMP_AVERAGE			avg;							// Do average the button readings to mainain the button status
+		EMP_AVERAGE			avg;							// Do average the button readings to maintain the button status
 		int16_t				min_pos	= 0;					// Minimum value of rotary encoder
 		int16_t				max_pos	= 0;					// Maximum value of roraty encoder
 		uint16_t			over_press = 0;					// Maximum time in ms the button can be pressed

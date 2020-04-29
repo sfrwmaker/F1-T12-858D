@@ -97,12 +97,14 @@ void Error_Handler(void);
 #define GUN_POWER_GPIO_Port GPIOA
 #define AC_ZERO_Pin GPIO_PIN_12
 #define AC_ZERO_GPIO_Port GPIOA
+#define AC_RELAY_Pin GPIO_PIN_15
+#define AC_RELAY_GPIO_Port GPIOA
 #define TILT_SW_Pin GPIO_PIN_3
 #define TILT_SW_GPIO_Port GPIOB
 #define BUZZER_Pin GPIO_PIN_9
 #define BUZZER_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
-#define FW_VERSION	("2.03")
+#define FW_VERSION	("3.00")
 
 /* USER CODE END Private defines */
 
