@@ -28,3 +28,7 @@ Apr 17 2020. New firmware release, 2.03. See detailed description on the project
   - Fixed issue 'jammed on tip selection screen'. Now the main menu reacheble from tip selection mode by long press.
   - Ambient temperature and tilt switch readings now are available on debug screen.
   - Controller without soldering handle connected starts working in Hot Air Gun mode.
+
+Apr 29 2020. New firmware release, 3.00. See detailed description on the project page.
+  - Optional 220v safety relay added.
+  - Rotary encoder acceleration deactivated.
