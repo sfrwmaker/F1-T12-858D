@@ -45,7 +45,7 @@ void MSTBY_IRON::init(void) {
 		t_min	= celsiusToFahrenheit(t_min);
 		t_max	= celsiusToFahrenheit(t_max);
 	}
-	pEnc->reset(temp_setH, t_min, t_max, 1, 5, false);
+	pEnc->reset(temp_setH, t_min, t_max, 1, 1, false);
 	no_handle		= false;								// By default the soldering IRON handle is connected
 	old_temp_set	= 0;
 	update_screen	= 0;									// Force to redraw the screen
@@ -157,15 +157,15 @@ void MWORK_IRON::init(void) {
 	bool 	 celsius	= pCFG->isCelsius();
 	int16_t  ambient	= pIron->ambientTemp();
 	uint16_t tempH  	= pCFG->tempPresetHuman();
-	preset_temp			= pCFG->humanToTemp(tempH, ambient);
+	uint16_t ps_temp	= pCFG->humanToTemp(tempH, ambient);
 	uint16_t t_min		= pCFG->tempMinC();
 	uint16_t t_max		= pCFG->tempMaxC();
 	if (!celsius) {											// The preset temperature saved in selected units
 		t_min	= celsiusToFahrenheit(t_min);
 		t_max	= celsiusToFahrenheit(t_max);
 	}
-	pEnc->reset(tempH, t_min, t_max, 1, 5, false);
-	pIron->setTemp(preset_temp);
+	pEnc->reset(tempH, t_min, t_max, 1, 1, false);
+	pIron->setTemp(ps_temp);
 	pD->mainInit();
 	pD->msgON();
 	pD->tip(pCFG->tipName());
@@ -201,9 +201,9 @@ void MWORK_IRON::hwTimeout(uint16_t low_temp, bool tilt_active) {
 
 	uint32_t now_ms = HAL_GetTick();
 	if (tilt_active) {										// If the IRON is used, Reset standby time
-		lowpower_time = now_ms + pCFG->getLowTO() * 1000;	// Convert timeout to milliseconds
+		lowpower_time = now_ms + pCFG->getLowTO() * 5000;	// Convert timeout (5secs interval) to milliseconds
 		if (lowpower_mode) {								// If the IRON is in low power mode, return to main working mode
-			pIron->setTemp(preset_temp);
+			pIron->lowPowerMode(0);							// Disable low power mode
 			lowpower_time	= 0;
 			lowpower_mode	= false;
 			ready 			= false;
@@ -214,11 +214,10 @@ void MWORK_IRON::hwTimeout(uint16_t low_temp, bool tilt_active) {
 	} else if (!lowpower_mode) {
 		if (lowpower_time) {
 			if (now_ms >= lowpower_time) {
-				preset_temp			= pIron->presetTemp();	// Save the current preset temperature
 				int16_t  ambient	= pIron->ambientTemp();
 				uint16_t temp_low	= pCFG->getLowTemp();
 				uint16_t temp 		= pCFG->humanToTemp(temp_low, ambient);
-				pIron->setTemp(temp);
+				pIron->lowPowerMode(temp);					// Activate low power mode
 				time_to_return 		= HAL_GetTick() + pCFG->getOffTimeout() * 60000;
 				auto_off_notified 	= false;
 				lowpower_mode		= true;
@@ -226,7 +225,7 @@ void MWORK_IRON::hwTimeout(uint16_t low_temp, bool tilt_active) {
 				return;
 			}
 		} else {
-			lowpower_time = now_ms + pCFG->getLowTO() * 1000;
+			lowpower_time = now_ms + pCFG->getLowTO() * 5000;
 		}
 	}
 }
@@ -270,7 +269,7 @@ MODE* MWORK_IRON::loop(void) {
 	// Switch to Hot Air Gun mode when the Reed switch is open.
 	if (gun_work && pCore->hotgun.isGunReedOpen()) {
 		if (lowpower_mode) {
-			pIron->setTemp(preset_temp);					// Restore iron working temperature
+			pIron->lowPowerMode(0);							// Disable low power mode
 		}
 		gun_work->keepIronWorking(pCFG->isKeepIron());		// Keep IRON working if enabled
     	return gun_work;
@@ -529,7 +528,7 @@ void MTACT::init(void) {
 	RENC*	pEnc	= &pCore->encoder;
 
 	uint8_t tip_index = pCFG->currentTipIndex();
-	pEnc->reset(tip_index, 1, pCFG->TIPS::loaded()-1, 1, 2, false);	// Start from tip #1, because 0-th 'tip' is a Hot Air Gun
+	pEnc->reset(tip_index, 1, pCFG->TIPS::loaded()-1, 1, 1, false);	// Start from tip #1, because 0-th 'tip' is a Hot Air Gun
 	old_tip_index = 255;
 	update_screen = 0;
 }
@@ -685,25 +684,25 @@ MODE* MMENU::loop(void) {
 					set_param = item;
 					uint8_t to = off_timeout;
 					if (to > 2) to -=2;
-					pEnc->reset(to, 0, 28, 1, 5, false);
+					pEnc->reset(to, 0, 28, 1, 1, false);
 					break;
 					}
 				case 6:											// Standby temperature
 					{
 					set_param = item;
-					pEnc->reset(low_temp, min_standby_C-1, max_standby_C, 1, 5, false);
+					pEnc->reset(low_temp, min_standby_C-1, max_standby_C, 1, 1, false);
 					break;
 					}
 				case 7:											// Standby timeout
 					set_param = item;
-					pEnc->reset(low_to, 5, 240, 1, 5, false);
+					pEnc->reset(low_to, 1, 255, 1, 1, false);
 					break;
 				case 8:											// Screen saver timeout
 					{
 					set_param = item;
 					uint8_t to = scr_saver;
 					if (to > 2) to -=2;
-					pEnc->reset(to, 0, 58, 1, 5, false);
+					pEnc->reset(to, 0, 58, 1, 1, false);
 					break;
 					}
 				case 9:											// save
@@ -807,11 +806,16 @@ MODE* MMENU::loop(void) {
 				sprintf(item_value, "OFF");
 			}
 			break;
-		case 7:													// Standby timeout
-			if (low_temp)
-				sprintf(item_value, "%3d s", low_to);
-			else
+		case 7:													// Standby timeout (5 secs intervals)
+			if (low_temp) {
+				uint16_t to = (uint16_t)low_to * 5;				// Timeout in seconds
+				if (to < 60)
+					sprintf(item_value, "%2d s", to);
+				else
+					sprintf(item_value, "%2dm %2ds", to/60, to % 60);
+			} else {
 				sprintf(item_value, "OFF");
+			}
 			break;
 		case 8:
 			if (scr_saver) {
@@ -903,7 +907,7 @@ void MCALIB::init(void) {
 	}
 	PIDparam pp = pCFG->pidParamsSmooth();						// Load PID parameters to stabilize the temperature of unknown tip
 	pIron->PID::load(pp);
-	pEnc->reset(0, min_t, max_t, 1, 5, false);
+	pEnc->reset(0, min_t, max_t, 1, 1, false);
 	for (uint8_t i = 0; i < MCALIB_POINTS; ++i) {
 		calib_temp[0][i] = 0;									// Real temperature. 0 means not entered yet
 		calib_temp[1][i] = map(i, 0, MCALIB_POINTS-1, start_int_temp, int_temp_max / 2); // Internal temperature
@@ -1246,7 +1250,7 @@ MODE* MCALIB_MANUAL::loop(void) {
 			tuning 			= true;
 			uint16_t tempH 	= pCFG->referenceTemp(encoder);		// Read the preset temperature from encoder
 			uint16_t temp 	= pCFG->humanToTemp(tempH, ambient);
-			pEnc->reset(temp, 100, int_temp_max, 5, 20, false); // int_temp_max declared in vars.cpp
+			pEnc->reset(temp, 100, int_temp_max, 5, 10, false); // int_temp_max declared in vars.cpp
 			if (use_iron) {
 				pIron->setTemp(temp);
 				pIron->switchPower(true);
@@ -1361,14 +1365,14 @@ MODE* MMBST::loop(void) {
 				case 0:											// delta temperature
 					{
 					mode 	= 1;
-					pEnc->reset(delta_temp, 0, 75, 5, 20, false);
+					pEnc->reset(delta_temp, 0, 75, 5, 5, false);
 					break;
 					}
 				case 1:											// duration
 					{
 					mode 	= 2;
 					uint8_t dur	= duration;
-					pEnc->reset(dur, 5, 80, 5, 20, false);
+					pEnc->reset(dur, 5, 80, 5, 5, false);
 					break;
 					}
 				case 2:											// save
@@ -1670,7 +1674,7 @@ MODE* MWORK_GUN::loop(void) {
 			t_min	= celsiusToFahrenheit(t_min);
 			t_max	= celsiusToFahrenheit(t_max);
 		}
-		pEnc->reset(temp_setH, t_min, t_max, 1, 5, false);
+		pEnc->reset(temp_setH, t_min, t_max, 1, 1, false);
 		edit_temp		= true;
 		return_to_temp	= 0;
 		old_param		= temp_setH;
@@ -1702,7 +1706,7 @@ MODE* MWORK_GUN::loop(void) {
     	if (edit_temp) {									// Switch to edit fan speed
     		uint16_t fan = pHG->presetFan();
     		uint16_t max = pHG->maxFanSpeed();
-    		pEnc->reset(fan, 0, max, 5, 20, false);
+    		pEnc->reset(fan, 0, max, 5, 10, false);
     		edit_temp 		= false;
     		old_param		= fan;
     		return_to_temp	= HAL_GetTick() + edit_fan_timeout;
@@ -1907,7 +1911,7 @@ MODE* MDEBUG::loop(void) {
 		pHG->fanFixed(0);
 		old_power = 0;
 		if (gun_mode) {											// Switch to gun mode
-			pCore->encoder.reset(min_fan_speed, min_fan_speed, max_fan_power,  1, 5, false);
+			pCore->encoder.reset(min_fan_speed, min_fan_speed, max_fan_power,  1, 1, false);
 		} else {
 			pCore->encoder.reset(0, 0, max_iron_power, 1, 5, false);
 		}

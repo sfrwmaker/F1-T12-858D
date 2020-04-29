@@ -52,8 +52,6 @@ static int 		cached_ambient 		= 0;					// Previous value of the temperature
 	return cached_ambient;
 }
 
-
-// If any switch is short, its status is 'true'
 void IRON_HW::checkSWStatus(void) {
 	if (HAL_GetTick() > check_sw) {
 		check_sw = HAL_GetTick() + check_sw_period;
@@ -184,17 +182,21 @@ uint16_t IRON::power(int32_t t) {
 				mode = POWER_OFF;
 			break;
 		case POWER_ON:
+		{
+			uint16_t t_set = temp_set;
+			if (temp_low) t_set = temp_low;					// If temp_low setup, turn-on low power mode
 			if (chill) {
-				if (t < (temp_set - 2)) {
+				if (t < (t_set - 2)) {
 					chill = false;
 					resetPID();
 				} else {
 					break;
 				}
 			}
-			p = PID::reqPower(temp_set, t);
+			p = PID::reqPower(t_set, t);
 			p = constrain(p, 0, max_power);
 			break;
+		}
 		case POWER_FIXED:
 			p = fix_power;
 			break;
@@ -218,4 +220,10 @@ void IRON::reset(void) {
 	d_power.reset();
 	d_temp.reset();
 	mode = POWER_OFF;										// New tip inserted, clear COOLING mode
+}
+
+
+void IRON::lowPowerMode(uint16_t t) {
+    if ((mode == POWER_ON && t < temp_set) || t == 0)
+        temp_low = t;                           			// Activate low power mode
 }

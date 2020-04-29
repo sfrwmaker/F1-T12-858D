@@ -64,7 +64,7 @@ void HOTGUN::switchPower(bool On) {
 	fan_off_time = 0;										// Disable fan offline by timeout
 	switch (mode) {
 		case POWER_OFF:
-			if (fanSpeed() == 0) {							// Not power supplied to the Fan
+			if (fanSpeed() == 0) {							// No power supplied to the Fan
 				if (On)										// !FAN && On
 					mode = POWER_ON;
 			} else {
@@ -132,11 +132,14 @@ void HOTGUN::switchPower(bool On) {
 			} else {
 				if (On) {									// !FAN && On
 					mode = POWER_ON;
+
 				}
 			}
 	}
 	h_power.reset();
 	d_power.reset();
+	GPIO_PinState relay_state = (mode == POWER_ON || mode == POWER_FIXED)?GPIO_PIN_SET:GPIO_PIN_RESET;
+	HAL_GPIO_WritePin(AC_RELAY_GPIO_Port, AC_RELAY_Pin, relay_state);
 }
 
 void HOTGUN::fixPower(uint8_t Power) {
@@ -147,6 +150,7 @@ void HOTGUN::fixPower(uint8_t Power) {
 
     if (Power > max_power) Power = max_power;
     mode = POWER_FIXED;
+    HAL_GPIO_WritePin(AC_RELAY_GPIO_Port, AC_RELAY_Pin, GPIO_PIN_SET);
     fix_power	= Power;
 }
 
@@ -218,4 +222,10 @@ uint8_t	HOTGUN::presetFanPcnt(void) {
 	if (pcnt > 100) pcnt = 100;
 	return pcnt;
 
+}
+
+void HOTGUN::shutdown(void)	{
+	mode = POWER_OFF;
+	TIM2->CCR2 = 0;
+	HAL_GPIO_WritePin(AC_RELAY_GPIO_Port, AC_RELAY_Pin, GPIO_PIN_RESET);
 }
