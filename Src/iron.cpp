@@ -96,6 +96,7 @@ void IRON::switchPower(bool On) {
 	}
 	h_power.reset();
 	d_power.reset();
+	temp_low	= 0;
 }
 
 void IRON::autoTunePID(uint16_t base_pwr, uint16_t delta_power, uint16_t base_temp, uint16_t temp) {
@@ -224,6 +225,10 @@ void IRON::reset(void) {
 
 
 void IRON::lowPowerMode(uint16_t t) {
-    if ((mode == POWER_ON && t < temp_set) || t == 0)
+    if (mode == POWER_ON && t < temp_set) {
         temp_low = t;                           			// Activate low power mode
+        resetPID();
+    	h_power.reset();
+    	d_power.reset();
+    }
 }

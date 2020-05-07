@@ -160,6 +160,12 @@ uint16_t CFG::humanToTemp(uint16_t t, int16_t ambient) {
 	return temp;
 }
 
+uint16_t CFG::lowTempInternal(int16_t ambient) {
+	uint16_t t200	= referenceTemp(0);
+	a_cfg.low_temp	= constrain(a_cfg.low_temp, ambient, t200);
+	return map(a_cfg.low_temp, ambient, t200, 0, TIP_CFG::calibration(0));
+}
+
 // Build the complete tip name (including "T12-" prefix)
 const char* CFG::tipName(void) {
 	uint8_t tip_index = 0;
@@ -469,12 +475,12 @@ void CFG_CORE::correctConfig(RECORD *cfg) {
 }
 
 // Apply main configuration parameters: automatic off timeout, buzzer and temperature units
-void CFG_CORE::setup(uint8_t off_timeout, bool buzzer, bool celsius, bool keep_iron, bool reed, uint16_t low_temp, uint8_t low_to, uint8_t scr_saver) {
+void CFG_CORE::setup(uint8_t off_timeout, bool buzzer, bool celsius, bool keep_iron, bool reed, bool temp_step,
+		uint16_t low_temp, uint8_t low_to, uint8_t scr_saver) {
 	bool cfg_celsius		= a_cfg.bit_mask & CFG_CELSIUS;
 	a_cfg.off_timeout		= off_timeout;
 	a_cfg.scr_save_timeout	= scr_saver;
 	a_cfg.low_temp			= low_temp;
-	if (low_to < 5) low_to = 5;
 	a_cfg.low_to			= low_to;
 	if (cfg_celsius	!= celsius) {							// When we change units, the temperature should be converted
 		if (celsius) {										// Translate preset temp. from Fahrenheit to Celsius
@@ -490,6 +496,7 @@ void CFG_CORE::setup(uint8_t off_timeout, bool buzzer, bool celsius, bool keep_i
 	if (buzzer)		a_cfg.bit_mask |= CFG_BUZZER;
 	if (keep_iron)	a_cfg.bit_mask |= CFG_KEEP_IRON;
 	if (reed)		a_cfg.bit_mask |= CFG_SWITCH;
+	if (temp_step)	a_cfg.bit_mask |= CFG_BIG_STEP;
 }
 
 void CFG_CORE::savePresetTempHuman(uint16_t temp_set) {

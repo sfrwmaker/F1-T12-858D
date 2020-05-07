@@ -10,6 +10,7 @@
 void HOTGUN_HW::init(void) {
 	c_fan.init(sw_avg_len,		fan_off_value,	fan_on_value);
 	sw_gun.init(sw_avg_len,		sw_off_value, 	sw_on_value);
+	activateRelay(false);
 }
 
 void HOTGUN_HW::checkSWStatus(void) {
@@ -17,6 +18,15 @@ void HOTGUN_HW::checkSWStatus(void) {
 		uint16_t on = 0;
 		if (GPIO_PIN_SET == HAL_GPIO_ReadPin(GUN_REED_GPIO_Port, GUN_REED_Pin))	on = 100;
 		sw_gun.update(on);									// If reed switch open, write 100;
+	}
+}
+
+void HOTGUN_HW::activateRelay(bool activate) {
+	if (activate) {
+		HAL_GPIO_WritePin(AC_RELAY_GPIO_Port, AC_RELAY_Pin, GPIO_PIN_SET);
+		relay_ready = HAL_GetTick() + relay_activate;
+	} else {
+		HAL_GPIO_WritePin(AC_RELAY_GPIO_Port, AC_RELAY_Pin, GPIO_PIN_RESET);
 	}
 }
 
@@ -65,12 +75,15 @@ void HOTGUN::switchPower(bool On) {
 	switch (mode) {
 		case POWER_OFF:
 			if (fanSpeed() == 0) {							// No power supplied to the Fan
-				if (On)										// !FAN && On
+				if (On)	{									// !FAN && On
 					mode = POWER_ON;
+					activateRelay(true);
+				}
 			} else {
 				if (On) {
 					if (isGunConnected()) {					// FAN && On && connected
 						mode = POWER_ON;
+						activateRelay(true);
 					} else {								// FAN && On && !connected
 						shutdown();
 					}
@@ -89,6 +102,7 @@ void HOTGUN::switchPower(bool On) {
 		case POWER_ON:
 			if (!On) {
 				mode = POWER_COOLING;
+				activateRelay(false);
 				fan_off_time = HAL_GetTick() + fan_off_timeout;
 			}
 			break;
@@ -135,11 +149,12 @@ void HOTGUN::switchPower(bool On) {
 
 				}
 			}
+			break;
+		default:
+			break;
 	}
 	h_power.reset();
 	d_power.reset();
-	GPIO_PinState relay_state = (mode == POWER_ON || mode == POWER_FIXED)?GPIO_PIN_SET:GPIO_PIN_RESET;
-	HAL_GPIO_WritePin(AC_RELAY_GPIO_Port, AC_RELAY_Pin, relay_state);
 }
 
 void HOTGUN::fixPower(uint8_t Power) {
@@ -150,7 +165,7 @@ void HOTGUN::fixPower(uint8_t Power) {
 
     if (Power > max_power) Power = max_power;
     mode = POWER_FIXED;
-    HAL_GPIO_WritePin(AC_RELAY_GPIO_Port, AC_RELAY_Pin, GPIO_PIN_SET);
+    activateRelay(true);
     fix_power	= Power;
 }
 
@@ -175,8 +190,14 @@ uint16_t HOTGUN::power(void) {
 					break;
 				}
 			}
-			p = PID::reqPower(temp_set, t);
-			p = constrain(p, 0, max_power);
+			if (relay_ready) {
+				if (relay_ready >= HAL_GetTick()) {
+					relay_ready = 0;
+				}
+			} else {
+				p = PID::reqPower(temp_set, t);
+				p = constrain(p, 0, max_power);
+			}
 			break;
 		case POWER_FIXED:
 			p			= fix_power;
@@ -227,5 +248,5 @@ uint8_t	HOTGUN::presetFanPcnt(void) {
 void HOTGUN::shutdown(void)	{
 	mode = POWER_OFF;
 	TIM2->CCR2 = 0;
-	HAL_GPIO_WritePin(AC_RELAY_GPIO_Port, AC_RELAY_Pin, GPIO_PIN_RESET);
+	activateRelay(false);
 }
