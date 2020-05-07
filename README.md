@@ -17,7 +17,7 @@ Jan 2020. Some updates of the second release
   - Minor changes in the controller schematics
   - Buzzer is always on issue fixed
 
-Feb 11 2020. Error on Op-amp label on schematics fixed. LM328 - > LM 358
+Feb 11 2020. Error on Op-amp label on schematics fixed. LM328 - > LM358
 
 Mar 23 2020. New firmware release, 2.02. See detailed description on the project page.
   - Updated Hot Air Gun cooling procedure
@@ -32,3 +32,7 @@ Apr 17 2020. New firmware release, 2.03. See detailed description on the project
 Apr 29 2020. New firmware release, 3.00. See detailed description on the project page.
   - Optional 220v safety relay added.
   - Rotary encoder acceleration deactivated.
+
+May 7 2020. New firmware release, 3.01. See detailed description on the project page.
+  - Standby mode issues fixed.
+  - Temperature step feature added.
