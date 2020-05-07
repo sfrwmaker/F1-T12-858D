@@ -1698,7 +1698,13 @@ MODE* MWORK_GUN::loop(void) {
 			t_min	= celsiusToFahrenheit(t_min);
 			t_max	= celsiusToFahrenheit(t_max);
 		}
-		pEnc->reset(temp_setH, t_min, t_max, 1, 1, false);
+		if (pCFG->isBigTempStep()) {							// The preset temperature step is 5 degrees
+			temp_setH -= temp_setH % 5;							// The preset temperature should be rounded to 5
+			pEnc->reset(temp_setH, t_min, t_max, 5, 5, false);
+
+		} else {
+			pEnc->reset(temp_setH, t_min, t_max, 1, 1, false);
+		}
 		edit_temp		= true;
 		return_to_temp	= 0;
 		old_param		= temp_setH;
