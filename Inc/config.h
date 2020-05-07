@@ -30,6 +30,7 @@ class CFG_CORE: public TIPS {
 		bool		isBuzzerEnabled(void)				{ return a_cfg.bit_mask & CFG_BUZZER; 	}
 		bool		isKeepIron(void)					{ return a_cfg.bit_mask & CFG_KEEP_IRON;}
 		bool		isReedType(void)					{ return a_cfg.bit_mask & CFG_SWITCH;	}
+		bool		isBigTempStep(void)					{ return a_cfg.bit_mask & CFG_BIG_STEP;	}
 		uint16_t	tempPresetHuman(void) 				{ return a_cfg.iron_temp;				}
 		uint16_t	gunTempPreset(void)					{ return a_cfg.gun_temp;				}
 		uint16_t	gunFanPreset(void)					{ return a_cfg.gun_fan_speed;			}
@@ -37,7 +38,8 @@ class CFG_CORE: public TIPS {
 		uint16_t	getLowTemp(void)					{ return a_cfg.low_temp; 				}
 		uint8_t		getLowTO(void)						{ return a_cfg.low_to; 					}	// 5-seconds intervals
 		uint8_t		getScrTo(void)						{ return a_cfg.scr_save_timeout;		}
-		void		setup(uint8_t off_timeout, bool buzzer, bool celsius, bool keep_iron, bool reed, uint16_t low_temp, uint8_t low_to, uint8_t scr_saver);
+		void		setup(uint8_t off_timeout, bool buzzer, bool celsius, bool keep_iron, bool reed, bool big_temp_step,
+						uint16_t low_temp, uint8_t low_to, uint8_t scr_saver);
 		void 		savePresetTempHuman(uint16_t temp_set);
 		void		saveGunPreset(uint16_t temp, uint16_t fan = 0);
 		uint8_t		boostTemp(void);
@@ -99,6 +101,7 @@ class CFG : public EEPROM, public CFG_CORE, public TIP_CFG, public BUZZER {
 		uint16_t 	tipChunksTotal(void);
 		uint16_t	tempToHuman(uint16_t temp, int16_t ambient, CFG_TEMP_DEVICE force_device = DEV_DEFAULT);
 		uint16_t	humanToTemp(uint16_t temp, int16_t ambient);
+		uint16_t	lowTempInternal(int16_t ambient);
 		const char* tipName(void);
 		void     	changeTip(uint8_t index);
 		uint8_t		currentTipIndex(void);

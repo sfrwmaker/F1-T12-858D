@@ -52,8 +52,8 @@ class SCRSAVER {
 		void			reset(void);
 		bool 			scrSaver(void);
 	private:
-		uint32_t		scr_save_ms		= 0;				// Time in ms when to switch to Screen Saver mode (if > 0)
-		uint8_t			to				= 0;
+		uint32_t		scr_save_ms		= 0;				// Time to switch to Screen Saver mode (if > 0, ms)
+		uint8_t			to				= 0;				// Timeout, minutes
 		bool			scr_saver		= false;			// Is the screen saver active
 };
 
@@ -82,6 +82,7 @@ class MWORK_IRON : public MODE, SCRSAVER {
 		void			setGunMode(MODE* gw)				{ gun_work = gw; }
 	private:
 		void 			adjustPresetTemp(void);
+		void			resetStandbyMode(void);
 		void			hwTimeout(uint16_t low_temp, bool tilt_active);
 		void 			swTimeout(uint16_t temp, uint16_t temp_set, uint16_t temp_setH, uint32_t td, uint32_t pd, uint16_t ap, int16_t ip);
 		MODE*			gun_work		= 0;				// Hot Air Gun Standby mode
@@ -152,15 +153,17 @@ class MMENU : public MODE {
 		bool		celsius			= true;					// Temperature units: C/F
 		bool		keep_iron		= false;				// Keep the iron working While in Hot Air Gun Mode
 		bool		reed			= false;				// IRON switch type: reed/tilt
+		bool		temp_step		= false;				// The preset temperature step (1/5)
 		uint8_t		set_param		= 0;					// The index of the modifying parameter
 		uint8_t		m_len			= 18;					// The menu length
 		uint8_t		mode_menu_item 	= 1;					// Save active menu element index to return back later
-		const char* menu_name[18] = {
+		const char* menu_name[19] = {
 			"boost setup",
 			"units",
 			"buzzer",
 			"keep iron",
 			"switch type",
+			"temp. step",
 			"auto off",
 			"standby temp",
 			"standby time",
@@ -176,7 +179,6 @@ class MMENU : public MODE {
 			"about"
 		};
 		const uint16_t	min_standby_C	= 120;				// Minimum standby temperature, Celsius
-		const uint16_t	max_standby_C	= 200;				// Maximum standby temperature, Celsius
 };
 
 //---------------------- Calibrate tip menu --------------------------------------

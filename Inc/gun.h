@@ -21,6 +21,9 @@ class HOTGUN_HW {
 		int32_t		fanCurrent(void)						{ return c_fan.read();						}
 		void		updateFanCurrent(uint16_t value)		{ c_fan.update(value);						}
 		void		checkSWStatus(void);
+	protected:
+		void		activateRelay(bool activate);
+		uint32_t	relay_ready					= 0;		// Time when the power relay become ready (ms)
 	private:
 		uint32_t	check_sw					= 0;		// Time when check reed switch status (ms)
 		SWITCH 		sw_gun;									// Hot Air Gun reed switch
@@ -30,6 +33,7 @@ class HOTGUN_HW {
 		const 		uint8_t		sw_off_value	= 30;
 		const 		uint8_t		sw_on_value		= 60;
 		const 		uint8_t		sw_avg_len		= 10;
+        const		uint16_t	relay_activate	= 500;		// The relay activation timeout (ms)
 };
 
 class HOTGUN : public HOTGUN_HW, public PID {

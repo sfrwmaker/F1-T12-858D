@@ -16,7 +16,7 @@
  * CFG_KEEP_IRON	- Is keep the iron working while in Hot Air Gun mode
  * CFG_SWITCH		- Switch type: Tilt (0) or REED (1)
  */
-typedef enum { CFG_CELSIUS = 1, CFG_BUZZER = 2, CFG_KEEP_IRON = 4, CFG_SWITCH = 8 } CFG_BIT_MASK;
+typedef enum { CFG_CELSIUS = 1, CFG_BUZZER = 2, CFG_KEEP_IRON = 4, CFG_SWITCH = 8, CFG_BIG_STEP = 128 } CFG_BIT_MASK;
 
 /* Configuration record in the EEPROM (after the tip table) has the following format:
  * Records are aligned by 2**n bytes (in this case, 32 bytes)
@@ -40,7 +40,7 @@ struct s_config {
 	uint16_t	iron_Kp, iron_Ki, iron_Kd;			// The IRON PID coefficients
 	uint16_t	gun_Kp,  gun_Ki,  gun_Kd;			// The Hot Air Gun PID coefficients
 	uint16_t	low_temp;							// The low power temperature (C) or 0 if the tilt sensor is disabled
-	uint8_t		low_to;								// The low power timeout (seconds)
+	uint8_t		low_to;								// The low power timeout (5 seconds intervals)
 	uint8_t		scr_save_timeout;					// The screen saver timeout (in minutes) [0-60]. Zero if disabled
 	uint8_t		boost;								// Two 4-bits parameters: The boost increment temperature and boost time. See description above
 	uint8_t		tip;								// Current tip index
