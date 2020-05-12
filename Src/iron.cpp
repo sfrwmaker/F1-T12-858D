@@ -227,7 +227,7 @@ void IRON::reset(void) {
 void IRON::lowPowerMode(uint16_t t) {
     if (mode == POWER_ON && t < temp_set) {
         temp_low = t;                           			// Activate low power mode
-        resetPID();
+        chill = true;										// Stop heating, when temp reaches standby one, reset PID
     	h_power.reset();
     	d_power.reset();
     }

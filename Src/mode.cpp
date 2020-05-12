@@ -626,7 +626,7 @@ void MMENU::init(void) {
 	scr_saver	= pCFG->getScrTo();
 	set_param	= 0;
 	if (!pCFG->isTipCalibrated())
-		mode_menu_item	= 12;									// Select calibration menu item
+		mode_menu_item	= tip_calib_menu;						// Index of 'calibrate tip' menu item
 	pEnc->reset(mode_menu_item, 0, m_len-1, 1, 1, true);
 	update_screen = 0;
 }
@@ -674,9 +674,9 @@ MODE* MMENU::loop(void) {
 	}
 
 	// Going through the main menu
-	if (!set_param) {
-		if (button > 0) {										// The button was pressed
-			switch (item) {
+	if (!set_param) {											// Menu item (parameter) to modify was not selected yet
+		if (button > 0) {										// The button was pressed, current menu item can be selected for modification
+			switch (item) {										// item is a menu item
 				case 0:											// Boost parameters
 					pCFG->setup(off_timeout, buzzer, celsius, keep_iron, reed, temp_step, low_temp, low_to, scr_saver);
 					return mode_menu_boost;
@@ -757,7 +757,7 @@ MODE* MMENU::loop(void) {
 					return mode_return;
 			}
 		}
-	} else {													// Finish modifying  parameter
+	} else {													// Finish modifying  parameter, return to menu mode
 		if (button == 1) {
 			item 			= set_param;
 			mode_menu_item 	= set_param;
@@ -766,9 +766,9 @@ MODE* MMENU::loop(void) {
 		}
 	}
 
-	// Prepare to modify menu item
+	// Prepare to modify menu item in-place using built-in editor
 	bool modify = false;
-	if (set_param >= 5 && set_param <= 8) {
+	if (set_param >= in_place_start && set_param <= in_place_end) {
 		item = set_param;
 		modify 	= true;
 	}
