@@ -33,6 +33,6 @@ Apr 29 2020. New firmware release, 3.00. See detailed description on the project
   - Optional 220v safety relay added.
   - Rotary encoder acceleration deactivated.
 
-May 7 2020. New firmware release, 3.01. See detailed description on the project page.
+May 12 2020. New firmware release, 3.01. See detailed description on the project page.
   - Standby mode issues fixed.
   - Temperature step feature added.
