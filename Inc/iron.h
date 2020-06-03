@@ -24,12 +24,11 @@ class IRON_HW {
 		uint16_t	ambientInternal(void)					{ return t_amb.read();							}
 		bool		noAmbientSensor(void)					{ return t_amb.read() >= max_ambient_value;		}
 		uint16_t	tiltInternal(void)						{ return sw_iron.read();						}
-		void		checkSWStatus(void);
+		void		checkSWStatus(void);					// Check TILT switch status
 		bool 		isIronTiltSwitch(bool reed);			// REED switch: TRUE if switch is shorten; else: TRUE if status has been changed
 		int32_t		ambientTemp(void);
 	private:
-		bool		tilt_changed			= false;		// Tilt switch status changed
-		uint32_t	check_sw			= 0;				// Time when check tilt switch status (ms)
+		uint32_t	check_sw				= 0;			// Time when check tilt switch status (ms)
 		EMP_AVERAGE t_iron_short;							// Exponential average of the IRON temperature (short period)
 		EMP_AVERAGE t_amb;									// Exponential average of the ambient temperature
 		SWITCH 		c_iron;									// Iron is connected switch
@@ -43,7 +42,7 @@ class IRON_HW {
 		const uint8_t	sw_on_value			= 20;
 		const uint8_t	sw_avg_len			= 5;
 		const uint8_t	sw_tilt_len			= 2;
-		const uint32_t	check_sw_period 	= 100;
+		const uint32_t	check_sw_period 	= 100;			// Tilt switch check period, ms
 		const uint16_t	max_ambient_value	= 3900;			// About -30 degrees. If the soldering IRON disconnected completely, "ambient" value is greater than this
 };
 

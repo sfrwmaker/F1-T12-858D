@@ -45,20 +45,8 @@ class MODE {
 
 };
 
-class SCRSAVER {
-	public:
-		SCRSAVER(void)										{ }
-		void			init(uint8_t timeout)				{ to = timeout; reset(); }
-		void			reset(void);
-		bool 			scrSaver(void);
-	private:
-		uint32_t		scr_save_ms		= 0;				// Time to switch to Screen Saver mode (if > 0, ms)
-		uint8_t			to				= 0;				// Timeout, minutes
-		bool			scr_saver		= false;			// Is the screen saver active
-};
-
 //---------------------- The iron standby mode -----------------------------------
-class MSTBY_IRON : public MODE, SCRSAVER {
+class MSTBY_IRON : public MODE {
 	public:
 		MSTBY_IRON(HW *pCore) : MODE(pCore)					{ }
 		virtual void	init(void);
@@ -74,27 +62,39 @@ class MSTBY_IRON : public MODE, SCRSAVER {
 };
 
 //-------------------- The iron main working mode, keep the temperature ----------
-class MWORK_IRON : public MODE, SCRSAVER {
+class MWORK_IRON : public MODE {
 	public:
 		MWORK_IRON(HW *pCore) : MODE(pCore), idle_pwr(ec)					{ }
 		virtual void	init(void);
 		virtual MODE*	loop(void);
-		void			setGunMode(MODE* gw)				{ gun_work = gw; }
+		void			setGunMode(MODE* gw)				{ gun_work = gw;		}
+		void			setLowPowerMode(MODE* lp)			{ low_power_mode = lp;	}
 	private:
 		void 			adjustPresetTemp(void);
-		void			resetStandbyMode(void);
-		void			hwTimeout(uint16_t low_temp, bool tilt_active);
-		void 			swTimeout(uint16_t temp, uint16_t temp_set, uint16_t temp_setH, uint32_t td, uint32_t pd, uint16_t ap, int16_t ip);
+		bool			hwTimeout(bool tilt_active);
+		void 			swTimeout(uint16_t temp, uint16_t temp_set, uint16_t temp_setH, uint32_t td, uint32_t pd, uint16_t ap);
 		MODE*			gun_work		= 0;				// Hot Air Gun Standby mode
+		MODE*			low_power_mode	= 0;				// Low power mode pointer
 		EMP_AVERAGE  	idle_pwr;							// Exponential average value for idle power
 		bool 			auto_off_notified = false;			// The time (in ms) when the automatic power-off was notified
 		bool      		ready			= false;			// Whether the IRON have reached the preset temperature
-		bool			lowpower_mode	= false;			// Whether hardware low power mode using tilt switch
 		uint32_t		ready_clear		= 0;				// Time when to clean 'Ready' message
 		uint32_t		lowpower_time	= 0;				// Time when switch to standby power mode
 		uint16_t 		old_temp_set	= 0;
 		const uint16_t	period			= 500;				// Redraw display period (ms)
 		const uint8_t	ec				= 5;				// The exponential average coefficient
+};
+
+//-------------------- The iron low power mode, decrease iron temperature --------
+class MLOW_POWER : public MODE {
+	public:
+		MLOW_POWER(HW *pCore) : MODE(pCore)					{ }
+		virtual void	init(void);
+		virtual MODE*	loop(void);
+	private:
+		bool 			auto_off_notified	= false;		// The time (in ms) when the automatic power-off was notified
+		uint16_t		old_enc 			= 0;			// old encoder position
+		const uint16_t	period				= 1000;			// Redraw display period (ms)
 };
 
 //---------------------- The boost mode, shortly increase the temperature --------
@@ -157,7 +157,7 @@ class MMENU : public MODE {
 		uint8_t		set_param		= 0;					// The index of the modifying parameter
 		uint8_t		mode_menu_item 	= 1;					// Save active menu element index to return back later
 		// When new menu item added, the m_len, in_place_start, in_place_end, tip_calib_menu constants should be adjusted
-		uint8_t		m_len			= 18;					// The menu length
+		uint8_t		m_len			= 19;					// The menu length
 		const char* menu_name[19] = {
 			"boost setup",
 			"units",
@@ -359,4 +359,4 @@ class MDEBUG : public MODE {
 		const uint16_t	max_fan_power 	= 1999;
 };
 
-#endif /* MODE_H_ */
+#endif

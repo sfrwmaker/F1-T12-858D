@@ -28,4 +28,4 @@ void loop(void);
 }
 #endif
 
-#endif /* CORE_H_ */
+#endif

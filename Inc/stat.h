@@ -45,11 +45,13 @@ class SWITCH : public EMP_AVERAGE {
     public:
         SWITCH(uint8_t len=8) : EMP_AVERAGE(len)			{ }
         void        init(uint8_t h_len, uint16_t on = 500, uint16_t off = 500);
-        bool        status(void);
+        bool        status(void)							{ return mode; }
+        bool		changed(void);
         void		update(uint16_t value);
     private:
-        bool        mode	 = false;               		// The switch mode on (true)/off
-        int16_t    	on_val  = 500;                 			// Turn on  value
+        bool		sw_changed	= false;					// The status has changed flag
+        bool        mode	= false;               			// The switch mode on (true)/off
+        int16_t    	on_val  = 400;                 			// Turn on  value
         int16_t    	off_val = 500;                 			// Turn off value
 };
 
