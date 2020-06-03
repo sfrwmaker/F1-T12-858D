@@ -115,9 +115,9 @@ static const uint8_t bmTiltActive[] = {
   0b00000100, 0b00000000,
   0b01000100, 0b01000000,
   0b00101110, 0b10000000,
-  0b00011111, 0b00000000,
-  0b11111111, 0b11100000,
-  0b00011111, 0b00000000,
+  0b00011011, 0b00000000,
+  0b11110001, 0b11100000,
+  0b00011011, 0b00000000,
   0b00101110, 0b10000000,
   0b01000100, 0b01000000,
   0b00000100, 0b00000000
@@ -899,7 +899,7 @@ void DSPL::debugShow(bool gun_mode, uint16_t power, bool iron, bool gun, uint16_
 		U8G2::drawStr(60,  15*(i+1), buff);
 	}
 	sprintf(buff, "(%c-%c)", iron?'i':' ', gun?'g':' ');
-	U8G2::drawStr(5,  62, buff);
+	U8G2::drawStr(5,  58, buff);
 	U8G2::sendBuffer();
 }
 

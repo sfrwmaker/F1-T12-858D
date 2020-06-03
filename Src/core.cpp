@@ -44,6 +44,7 @@ static HW		core;										// Hardware core (including all device instances)
 // MODE instances
 static	MSTBY_IRON		standby_iron(&core);
 static	MWORK_IRON		work_iron(&core);
+static  MLOW_POWER		low_power(&core);
 static	MBOOST			boost(&core);
 static	MSLCT			select(&core);
 static	MTACT			activate(&core);
@@ -86,6 +87,22 @@ uint16_t syncAC(void) {
 	return TIM2->ARR+1;										// This value is bigger than TIM2 period, the TIM2 has not been synchronized
 }
 
+void SCRSAVER::reset(void) {
+	if (to > 0) {
+		scr_save_ms = HAL_GetTick() + (uint32_t)to * 60000;
+	} else {
+		scr_save_ms = 0;								// Disable screen saver
+	}
+	scr_saver = false;
+}
+
+bool SCRSAVER::scrSaver(void) {
+    if (scr_save_ms && !scr_saver && HAL_GetTick() >= scr_save_ms) {
+    	scr_saver = true;
+    }
+    return scr_saver;
+}
+
 CFG_STATUS HW::init(void) {
 	dspl.init(U8G2_R2);
 	iron.init();
@@ -97,6 +114,7 @@ CFG_STATUS HW::init(void) {
 	pp					=	cfg.pidParams(false);			// load Hot Air Gun PID parameters
 	hotgun.load(pp);
 	buzz.activate(cfg.isBuzzerEnabled());
+	scrsaver.init(cfg.getScrTo());							// Screen saver timeout can be reloaded via main menu, see MMENU::loop()
 	return cfg_init;
 }
 
@@ -116,6 +134,7 @@ extern "C" void setup(void) {
 	// Setup main mode parameters: return mode, short press mode, long press mode
 	standby_iron.setup(&select, &work_iron, &main_menu);
 	work_iron.setup(&standby_iron, &standby_iron, &boost);
+	low_power.setup(&standby_iron, &work_iron, &work_iron);
 	boost.setup(&work_iron, &work_iron, &work_iron);
 	select.setup(&standby_iron, &activate, &main_menu);
 	activate.setup(&standby_iron, &standby_iron, &main_menu);
@@ -133,6 +152,7 @@ extern "C" void setup(void) {
 
 	standby_iron.setGunMode(&work_gun);
 	work_iron.setGunMode(&work_gun);
+	work_iron.setLowPowerMode(&low_power);
 	work_gun.setIronModes(&standby_iron, &work_iron);
 
 	switch (cfg_init) {
@@ -159,6 +179,7 @@ extern "C" void loop(void) {
 	core.hotgun.checkSWStatus();							// Check status of Gun Reed and Mode switches
 	MODE* new_mode = pMode->returnToMain();
 	if (new_mode && new_mode != pMode) {
+		core.buzz.doubleBeep();
 		core.iron.switchPower(false);
 		TIM2->CCR1	= 0;
 		pMode = new_mode;

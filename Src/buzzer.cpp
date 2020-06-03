@@ -33,7 +33,7 @@ void BUZZER::doubleBeep(void) {
 
 void BUZZER::lowBeep(void) {
 	if (!enabled) return;
-	playTone(2840, 300);
+	playTone(2840, 160);
 }
 
 void BUZZER::failedBeep(void) {

@@ -21,12 +21,17 @@ void HOTGUN_HW::checkSWStatus(void) {
 	}
 }
 
+/*
+ * We need some time to activate the relay, so we initialize the relay_ready_cnt variable.
+ *
+ */
 void HOTGUN_HW::activateRelay(bool activate) {
 	if (activate) {
 		HAL_GPIO_WritePin(AC_RELAY_GPIO_Port, AC_RELAY_Pin, GPIO_PIN_SET);
-		relay_ready = HAL_GetTick() + relay_activate;
+		relay_ready_cnt = relay_activate;
 	} else {
 		HAL_GPIO_WritePin(AC_RELAY_GPIO_Port, AC_RELAY_Pin, GPIO_PIN_RESET);
+		relay_ready_cnt = 0;
 	}
 }
 
@@ -46,7 +51,6 @@ void HOTGUN::init(void) {
 uint8_t HOTGUN::avgPowerPcnt(void) {
 	uint8_t pcnt = 0;
 	if (mode == POWER_FIXED) {
-//		pcnt = map(h_power.read(), 0, max_fix_power, 0, 100);
 		pcnt = map(fix_power, 0, max_fix_power, 0, 100);
 	} else {
 		pcnt = map(h_power.read(), 0, max_power, 0, 100);
@@ -76,14 +80,14 @@ void HOTGUN::switchPower(bool On) {
 		case POWER_OFF:
 			if (fanSpeed() == 0) {							// No power supplied to the Fan
 				if (On)	{									// !FAN && On
-					mode = POWER_ON;
 					activateRelay(true);
+					mode = POWER_ON;
 				}
 			} else {
 				if (On) {
 					if (isGunConnected()) {					// FAN && On && connected
-						mode = POWER_ON;
 						activateRelay(true);
+						mode = POWER_ON;
 					} else {								// FAN && On && !connected
 						shutdown();
 					}
@@ -102,7 +106,7 @@ void HOTGUN::switchPower(bool On) {
 		case POWER_ON:
 			if (!On) {
 				mode = POWER_COOLING;
-				activateRelay(false);
+				activateRelay(false);						// Switch off the AC relay
 				fan_off_time = HAL_GetTick() + fan_off_timeout;
 			}
 			break;
@@ -116,6 +120,7 @@ void HOTGUN::switchPower(bool On) {
 							shutdown();
 						} else {							// FAN && !On && connected && !cold
 							mode = POWER_COOLING;
+							activateRelay(false);			// Switch off the AC relay
 							fan_off_time = HAL_GetTick() + fan_off_timeout;
 						}
 					}
@@ -130,6 +135,7 @@ void HOTGUN::switchPower(bool On) {
 			if (fanSpeed()) {
 				if (On) {									// FAN && On
 					if (isGunConnected()) {					// FAN && On && connected
+						activateRelay(true);
 						mode = POWER_ON;
 					} else {								// FAN && On && !connected
 						shutdown();
@@ -145,8 +151,8 @@ void HOTGUN::switchPower(bool On) {
 				}
 			} else {
 				if (On) {									// !FAN && On
+					activateRelay(true);
 					mode = POWER_ON;
-
 				}
 			}
 			break;
@@ -169,6 +175,10 @@ void HOTGUN::fixPower(uint8_t Power) {
     fix_power	= Power;
 }
 
+/*
+ * Called from HAL_TIM_OC_DelayElapsedCallback() event handler. see core.cpp
+ * 100 times per second
+ */
 uint16_t HOTGUN::power(void) {
 	uint16_t t = h_temp.read();								// Actual Hot Air Gun temperature
 
@@ -190,17 +200,20 @@ uint16_t HOTGUN::power(void) {
 					break;
 				}
 			}
-			if (relay_ready) {
-				if (relay_ready >= HAL_GetTick()) {
-					relay_ready = 0;
-				}
+			if (relay_ready_cnt > 0) {						// Relay is not ready yet
+				--relay_ready_cnt;							// Do not apply power to the HOT GUN till AC relay is ready
 			} else {
 				p = PID::reqPower(temp_set, t);
 				p = constrain(p, 0, max_power);
 			}
 			break;
 		case POWER_FIXED:
-			p			= fix_power;
+			if (relay_ready_cnt > 0) {						// Relay is not ready yet
+				--relay_ready_cnt;							// Do not apply power to the HOT GUN till AC relay is ready
+			} else {
+				p = fix_power;
+
+			}
 			TIM2->CCR2	= fan_speed;
 			break;
 		case POWER_COOLING:

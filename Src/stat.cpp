@@ -69,20 +69,29 @@ void SWITCH::init(uint8_t h_len, uint16_t off, uint16_t on) {
     mode		= false;
 }
 
-bool SWITCH::status(void) {
-	if (mode) {
-		if (EMP_AVERAGE::read() < off_val)
-			mode = false;
-	} else {
-		if (EMP_AVERAGE::read() > on_val)
-			mode = true;
+
+bool SWITCH::changed(void) {
+	if (sw_changed) {
+		sw_changed = false;
+		return true;
 	}
-    return mode;
+	return false;
 }
 
 void SWITCH::update(uint16_t value) {
 	uint16_t max_val = on_val  + (on_val  >> 1);
 	uint16_t min_val = off_val - (off_val >> 1);
 	value = constrain(value, min_val, max_val);
-	EMP_AVERAGE::update(value);
+	uint16_t avg = EMP_AVERAGE::average(value);
+	if (mode) {
+		if (avg < off_val) {
+			sw_changed	= true;
+			mode		= false;
+		}
+	} else {
+		if (avg > on_val) {
+			sw_changed = true;
+			mode 	= true;
+		}
+	}
 }

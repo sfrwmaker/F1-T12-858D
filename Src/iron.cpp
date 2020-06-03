@@ -10,7 +10,6 @@
 #include "tools.h"
 
 void IRON_HW::init(void) {
-	tilt_changed	= false;
 	t_iron_short.length(iron_emp_coeff);
 	t_amb.length(ambient_emp_coeff);
 	c_iron.init(iron_sw_len,	iron_off_value,	iron_on_value);
@@ -57,19 +56,14 @@ void IRON_HW::checkSWStatus(void) {
 		check_sw = HAL_GetTick() + check_sw_period;
 		uint16_t on = 0;									// 0 - short, 100 - open
 		if (GPIO_PIN_SET == HAL_GPIO_ReadPin(TILT_SW_GPIO_Port, TILT_SW_Pin))	on = 100;
-		bool status = sw_iron.status();						// previous switch status
-		sw_iron.update(on);
-		if (status != sw_iron.status())						// Switch status has been changed
-			tilt_changed = true;							// Set changed flag to on. The flag will be cleared in isIronTiltSwitch()
+		sw_iron.update(on);									// Calculate current switch status and update the changed flag
 	}
 }
 
 bool IRON_HW::isIronTiltSwitch(bool reed) {
-    bool ret = tilt_changed;
-    tilt_changed = false;									// Clear changed flag
 	if (reed)
 		return sw_iron.status();							// TRUE if switch is open (IRON in use)
-	return ret;												// TRUE if tilt status has been changed
+	return sw_iron.changed();								// TRUE if tilt status has been changed
 }
 
 void IRON::init(void) {
@@ -92,6 +86,7 @@ void IRON::switchPower(bool On) {
 			mode = POWER_COOLING;							// Start the cooling process
 	} else {
 		resetPID();
+		temp_low	= 0;									// Disable low power mode
 		mode		= POWER_ON;
 	}
 	h_power.reset();
