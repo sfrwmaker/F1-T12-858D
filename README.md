@@ -36,3 +36,12 @@ Apr 29 2020. New firmware release, 3.00. See detailed description on the project
 May 12 2020. New firmware release, 3.01. See detailed description on the project page.
   - Standby mode issues fixed.
   - Temperature step feature added.
+  
+June 03 2020. New fermaware release, 3.02.
+  - Hot Air GUN start issue fixed. The power is supplied to the Hot Gun in 1 second after it activated allowing enabling AC relay.
+  - "About" menu itmem issue fixed. Now this menu is available.
+  - Tilt switch procedures reviewed and updated.
+  - The standby mode separated from main working mode and implemented as a new one.
+  - Screen saver timeout now is a single entity. It is no longer depended on mode switching. To return to the normal screen mode, touch the encoder.
+  - Software automatic power off procedure reviewed and updated. The controller can power off the iron in case of no tilt switch available.
+  - Accelerated mode of rotary encoder implemented in setting low power temperature procedure in the main menu.
