@@ -209,7 +209,7 @@ void MWORK_IRON::adjustPresetTemp(void) {
 	}
 }
 
-bool MWORK_IRON::hwTimeout(bool tilt_active) {;
+bool MWORK_IRON::hwTimeout(bool tilt_active) {
 	CFG*	pCFG	= &pCore->cfg;
 
 	uint32_t now_ms = HAL_GetTick();

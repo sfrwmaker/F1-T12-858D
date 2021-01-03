@@ -169,14 +169,15 @@ static const char* k_proto[3] = {
 	"Kd = %5d"
 };
 
-void DSPL::init(const u8g2_cb_t *rotation)  {
+void DSPL::init(void)  {
 	u8x8_msg_cb msg_cb = u8x8_byte_stm32_hw_spi;
 	if (HAL_OK == HAL_I2C_IsDeviceReady(&I2C_HANDLER, OLED_I2C_ADDR<<1, 2, 2)) {
 		msg_cb = u8x8_byte_stm32_hw_i2c;
 	}
-//	u8g2_Setup_sh1106_128x64_noname_f(&u8g2, rotation, msg_cb, u8x8_gpio_and_delay_stm32);
-	u8g2_Setup_ssd1306_128x64_noname_f(&u8g2, rotation, msg_cb, u8x8_gpio_and_delay_stm32);
-//	u8g2_Setup_ssd1309_128x64_noname2_f(&u8g2, rotation, msg_cb, u8x8_gpio_and_delay_stm32);
+//	u8g2_Setup_sh1106_128x64_noname_f(&u8g2, U8G2_R2, msg_cb, u8x8_gpio_and_delay_stm32);
+	u8g2_Setup_ssd1306_128x64_noname_f(&u8g2, U8G2_R2, msg_cb, u8x8_gpio_and_delay_stm32);
+//	u8g2_Setup_ssd1305_128x64_adafruit_f(&u8g2, U8G2_R2, msg_cb, u8x8_gpio_and_delay_stm32);
+//	u8g2_Setup_ssd1309_128x64_noname2_f(&u8g2, U8G2_R2, msg_cb, u8x8_gpio_and_delay_stm32);
 	saver_center[0] = d_width/2;
 	saver_center[1] = d_height/2;
 	begin();

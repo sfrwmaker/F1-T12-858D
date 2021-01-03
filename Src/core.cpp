@@ -104,7 +104,7 @@ bool SCRSAVER::scrSaver(void) {
 }
 
 CFG_STATUS HW::init(void) {
-	dspl.init(U8G2_R2);
+	dspl.init();
 	iron.init();
 	hotgun.init();
 	encoder.addButton(ENCODER_B_GPIO_Port, ENCODER_B_Pin);
@@ -311,3 +311,8 @@ extern "C" void EXTI0_IRQHandler(void) {
 	__HAL_GPIO_EXTI_CLEAR_IT(ENCODER_L_Pin);
 }
 
+// POWER switched off
+void EXTI4_IRQHandler(void) {
+	core.hotgun.hwPwrOff();									// Indicate the hardware power switch was off
+	__HAL_GPIO_EXTI_CLEAR_IT(PWR_SW_RD_Pin);
+}
