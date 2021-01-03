@@ -10,8 +10,15 @@
 void HOTGUN_HW::init(void) {
 	c_fan.init(sw_avg_len,		fan_off_value,	fan_on_value);
 	sw_gun.init(sw_avg_len,		sw_off_value, 	sw_on_value);
+	ignore_reed	= false;
 	safetyRelay(false);
 	pwrKeepRelay(false);
+}
+
+bool HOTGUN_HW::isGunReedOpen(void)	{
+	if (ignore_reed)										// When the main switch was turned off, ignore the reed switch status
+		return false;
+	return sw_gun.status();
 }
 
 void HOTGUN_HW::checkSWStatus(void) {
@@ -44,9 +51,9 @@ void HOTGUN_HW::pwrKeepRelay(bool activate) {
 	keep_power = activate;
 }
 
-void HOTGUN::hwPwrOff(void) {
+void HOTGUN_HW::hwPwrOff(void) {
 	if (keep_power)
-		switchPower(false);									// Start cooling the Hot Air Gun
+		ignore_reed = true;									// Simulate on-hook. Start cooling the Hot Air Gun
 }
 
 void HOTGUN::init(void) {
@@ -278,4 +285,6 @@ void HOTGUN::shutdown(void)	{
 	TIM2->CCR2 = 0;
 	safetyRelay(false);										// Stop supplying AC power to the hot air gun
 	pwrKeepRelay(false);									// Switch off keep relay, perhaps shutdown the controller
+	HAL_Delay(100);											// Wait the relay off
+	ignore_reed	= false;
 }
