@@ -22,8 +22,10 @@ class HOTGUN_HW {
 		void		updateFanCurrent(uint16_t value)		{ c_fan.update(value);						}
 		void		checkSWStatus(void);
 	protected:
-		void		activateRelay(bool activate);
-		volatile 	uint8_t	relay_ready_cnt		= 0;		// The relay ready counter, see HOTHUN::power()
+		void		safetyRelay(bool activate);
+		void		pwrKeepRelay(bool activate);
+		volatile 	uint8_t		relay_ready_cnt	= 0;		// The relay ready counter, see HOTHUN::power()
+		volatile 	bool		keep_power		= false;	// Status of keep power relay
 	private:
 		uint32_t	check_sw					= 0;		// Time when check reed switch status (ms)
 		SWITCH 		sw_gun;									// Hot Air Gun reed switch
@@ -62,6 +64,7 @@ class HOTGUN : public HOTGUN_HW, public PID {
         void        fixPower(uint8_t Power);				// Set the specified power to the the hot gun
 		uint8_t		presetFanPcnt(void);
 		uint16_t    power(void);							// Required Hot Air Gun power to keep the preset temperature
+		void		hwPwrOff(void);							// Hardware power switch was off
     private:
 		void		shutdown(void);
 		PowerMode	mode				= POWER_OFF;

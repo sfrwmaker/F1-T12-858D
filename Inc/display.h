@@ -18,7 +18,7 @@ const uint16_t  d_height	= 64;        					// display height
 class DSPL : public U8G2 {
 	public:
 		DSPL(void)	: U8G2()								{ }
-		void		init(const u8g2_cb_t *rotation);
+		void		init(void);
 		void		mainInit(void)							{ msg_buff[0] = tip_name[0] = 0; }
 		void		status(const char *msg);
 		void 		msgClean(void);
