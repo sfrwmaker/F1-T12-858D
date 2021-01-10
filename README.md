@@ -50,6 +50,6 @@ June 03 2020. New firmaware release, 3.02.
   - Display initialization method chhanged. Now the rotation parameter is inside the contstuctor in display.cpp.
   - Added support for 'Guarantee cool gun' feature. New feature requires the hardware to be updated.
     With new hardware schematics the controller guarantees the Hot Air Gun cooled before shutdown.
-    You can use Hot Air Gun then switch off the main power switch and leave your working place.
+    You can put Hot Air Gun to the base then switch off the main power switch and leave your working place.
     The controller will switch-off the Hot Air Gun, waits till the Hot Air gun cooled and power-off itself.
-    The new firmware release suports old hardware also. Of course, new 'guarantee cool gun feature' will not be available.
+    The new firmware release suports old hardware also. Of course, new 'guarantee cool gun feature' will not be available on old hardware.
