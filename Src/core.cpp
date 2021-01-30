@@ -311,8 +311,3 @@ extern "C" void EXTI0_IRQHandler(void) {
 	__HAL_GPIO_EXTI_CLEAR_IT(ENCODER_L_Pin);
 }
 
-// POWER switched off
-void EXTI4_IRQHandler(void) {
-	core.hotgun.hwPwrOff();									// Indicate the hardware power switch was off
-	__HAL_GPIO_EXTI_CLEAR_IT(PWR_SW_RD_Pin);
-}

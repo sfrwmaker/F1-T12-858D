@@ -10,14 +10,10 @@
 void HOTGUN_HW::init(void) {
 	c_fan.init(sw_avg_len,		fan_off_value,	fan_on_value);
 	sw_gun.init(sw_avg_len,		sw_off_value, 	sw_on_value);
-	ignore_reed	= false;
-	safetyRelay(false);
-	pwrKeepRelay(false);
+	safetyRelay(false);										// Completely turn-off the power of Hot Air Gun
 }
 
 bool HOTGUN_HW::isGunReedOpen(void)	{
-	if (ignore_reed)										// When the main switch was turned off, ignore the reed switch status
-		return false;
 	return sw_gun.status();
 }
 
@@ -39,21 +35,6 @@ void HOTGUN_HW::safetyRelay(bool activate) {
 		HAL_GPIO_WritePin(AC_RELAY_GPIO_Port, AC_RELAY_Pin, GPIO_PIN_RESET);
 		relay_ready_cnt = 0;
 	}
-}
-
-// Power keep relay: the one connected parallel with main AC switch. Ensure the hot air gun is cool before switch off the controller
-void HOTGUN_HW::pwrKeepRelay(bool activate) {
-	if (activate) {
-		HAL_GPIO_WritePin(KEEP_RELAY_GPIO_Port, KEEP_RELAY_Pin, GPIO_PIN_SET);
-	} else {
-		HAL_GPIO_WritePin(KEEP_RELAY_GPIO_Port, KEEP_RELAY_Pin, GPIO_PIN_RESET);
-	}
-	keep_power = activate;
-}
-
-void HOTGUN_HW::hwPwrOff(void) {
-	if (keep_power)
-		ignore_reed = true;									// Simulate on-hook. Start cooling the Hot Air Gun
 }
 
 void HOTGUN::init(void) {
@@ -127,7 +108,6 @@ void HOTGUN::switchPower(bool On) {
 		case POWER_ON:
 			if (!On) {										// Start cooling the hot air gun
 				mode = POWER_COOLING;
-				safetyRelay(false);							// Stop supplying AC power to the hot air gun
 				fan_off_time = HAL_GetTick() + fan_off_timeout;
 			}
 			break;
@@ -141,7 +121,6 @@ void HOTGUN::switchPower(bool On) {
 							shutdown();
 						} else {							// FAN && !On && connected && !cold
 							mode = POWER_COOLING;
-							safetyRelay(false);				// Stop supplying AC power to the hot air gun
 							fan_off_time = HAL_GetTick() + fan_off_timeout;
 						}
 					}
@@ -224,8 +203,6 @@ uint16_t HOTGUN::power(void) {
 			} else {
 				p = PID::reqPower(temp_set, t);
 				p = constrain(p, 0, max_power);
-				if (!keep_power)
-					pwrKeepRelay(true);						// Activate keep power relay
 			}
 			break;
 		case POWER_FIXED:
@@ -233,8 +210,6 @@ uint16_t HOTGUN::power(void) {
 				--relay_ready_cnt;							// Do not apply power to the HOT GUN till AC relay is ready
 			} else {
 				p = fix_power;
-				if (!keep_power)
-					pwrKeepRelay(true);						// Activate keep power relay
 			}
 			TIM2->CCR2	= fan_speed;
 			break;
@@ -284,7 +259,5 @@ void HOTGUN::shutdown(void)	{
 	mode = POWER_OFF;
 	TIM2->CCR2 = 0;
 	safetyRelay(false);										// Stop supplying AC power to the hot air gun
-	pwrKeepRelay(false);									// Switch off keep relay, perhaps shutdown the controller
 	HAL_Delay(100);											// Wait the relay off
-	ignore_reed	= false;
 }
