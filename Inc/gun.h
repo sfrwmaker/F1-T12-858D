@@ -21,13 +21,9 @@ class HOTGUN_HW {
 		int32_t		fanCurrent(void)						{ return c_fan.read();						}
 		void		updateFanCurrent(uint16_t value)		{ c_fan.update(value);						}
 		void		checkSWStatus(void);
-		void		hwPwrOff(void);							// Hardware power switch was off
 	protected:
 		void		safetyRelay(bool activate);
-		void		pwrKeepRelay(bool activate);
 		volatile 	uint8_t		relay_ready_cnt	= 0;		// The relay ready counter, see HOTHUN::power()
-		volatile 	bool		keep_power		= false;	// Status of keep power relay
-		volatile	bool		ignore_reed		= false;
 	private:
 		uint32_t	check_sw					= 0;		// Time when check reed switch status (ms)
 		SWITCH 		sw_gun;									// Hot Air Gun reed switch
