@@ -55,4 +55,4 @@ June 03 2020. New firmaware release, 3.02.
     The new firmware release suports old hardware also. Of course, new 'guarantee cool gun feature' will not be available on old hardware.
     
   Jan 30 2021. New hardware and firmware release. The schematics with relay has been simplified.
-  - Support for 'Guarantee cool gun' feature changed. New feature requires the hardware to be updated.
+  - Support for 'Guarantee cool gun' feature changed. New feature requires the hardware to be updated. See stm32_T12+858D_v4.sch file in the eagle directory.
