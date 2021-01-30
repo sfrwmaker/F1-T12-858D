@@ -46,10 +46,13 @@ June 03 2020. New firmaware release, 3.02.
   - Software automatic power off procedure reviewed and updated. The controller can power off the iron in case of no tilt switch available.
   - Accelerated mode of rotary encoder implemented in setting low power temperature procedure in the main menu.
   
-  Jan 03 2020. New firmware release, 4.00.
+  Jan 03 2021. New firmware release, 4.00.
   - Display initialization method chhanged. Now the rotation parameter is inside the contstuctor in display.cpp.
   - Added support for 'Guarantee cool gun' feature. New feature requires the hardware to be updated.
     With new hardware schematics the controller guarantees the Hot Air Gun cooled before shutdown.
     You can put Hot Air Gun to the base then switch off the main power switch and leave your working place.
     The controller will switch-off the Hot Air Gun, waits till the Hot Air gun cooled and power-off itself.
     The new firmware release suports old hardware also. Of course, new 'guarantee cool gun feature' will not be available on old hardware.
+    
+  Jan 30 2021. New hardware and firmware release. The schematics with relay has been simplified.
+  - Support for 'Guarantee cool gun' feature changed. New feature requires the hardware to be updated.
