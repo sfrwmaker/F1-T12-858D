@@ -227,7 +227,7 @@ uint16_t HOTGUN::power(void) {
 					}
 				} else {									// FAN && !connected
 					if (fan_off_time) {						// The fan should be turned off in specific time
-						if (HAL_GetTick() < fan_off_time)	// It is not time to shutdown the fan
+						if (HAL_GetTick() < fan_off_time)	// It is not time to shutdown the fan yet
 							break;
 						fan_off_time = 0;
 					}
@@ -255,9 +255,9 @@ uint8_t	HOTGUN::presetFanPcnt(void) {
 
 }
 
+// Can be called from the event handler.
 void HOTGUN::shutdown(void)	{
 	mode = POWER_OFF;
 	TIM2->CCR2 = 0;
 	safetyRelay(false);										// Stop supplying AC power to the hot air gun
-	HAL_Delay(100);											// Wait the relay off
 }
