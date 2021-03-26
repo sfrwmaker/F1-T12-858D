@@ -17319,12 +17319,6 @@ Standard schematic elements and footprints for 5mm, 3mm, 1206, and 0603 sized LE
 <wire x1="114.3" y1="-22.86" x2="132.08" y2="-22.86" width="0.1524" layer="91"/>
 </segment>
 </net>
-<net name="N$40" class="0">
-<segment>
-<pinref part="B1" gate="1" pin="AC2"/>
-<wire x1="-15.24" y1="-10.16" x2="-17.78" y2="-10.16" width="0.1524" layer="91"/>
-</segment>
-</net>
 <net name="N$44" class="0">
 <segment>
 <pinref part="C11" gate="G$1" pin="2"/>
@@ -17770,6 +17764,11 @@ Standard schematic elements and footprints for 5mm, 3mm, 1206, and 0603 sized LE
 <pinref part="K1" gate="3" pin="S"/>
 <wire x1="-83.82" y1="-27.94" x2="-83.82" y2="-33.02" width="0.1524" layer="91"/>
 <junction x="-83.82" y="-27.94"/>
+<pinref part="B1" gate="1" pin="AC2"/>
+<wire x1="-17.78" y1="-10.16" x2="-15.24" y2="-10.16" width="0.1524" layer="91"/>
+<wire x1="-15.24" y1="-10.16" x2="-15.24" y2="2.54" width="0.1524" layer="91"/>
+<wire x1="-15.24" y1="2.54" x2="-83.82" y2="2.54" width="0.1524" layer="91"/>
+<junction x="-83.82" y="2.54"/>
 </segment>
 </net>
 <net name="V+" class="0">
