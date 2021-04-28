@@ -196,11 +196,11 @@ extern "C" void loop(void) {
 		pMode->init();
 	}
 
-	// If TIM1 counter has been changed since last check, we received AC_ZERO interrupts from AC power
+	// If TIM1 counter has been changed since last check, we received AC_ZERO events from AC power
 	if (HAL_GetTick() >= AC_check_time) {
 		ac_sine		= (TIM1->CNT != tim1_cntr);
 		tim1_cntr	= TIM1->CNT;
-		AC_check_time = HAL_GetTick() + 40;					// 50 Hz is 20 ms
+		AC_check_time = HAL_GetTick() + 41;					// 50Hz AC line generates 100Hz events. The pulse period is 10 ms
 	}
 }
 

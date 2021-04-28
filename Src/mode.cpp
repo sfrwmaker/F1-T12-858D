@@ -537,7 +537,7 @@ MODE* MSLCT::loop(void) {
     	return mode_return;
     }
 
-	if (pIron->isIronConnected() || !isACsine()) {
+	if (pIron->isIronConnected() || !isACsine()) {			// See core.cpp for isACsine()
 		// Prevent bouncing event, when the IRON connection restored back too quickly.
 		if (tip_begin_select && (HAL_GetTick() - tip_begin_select) < 1000) {
 			return 0;
@@ -1986,14 +1986,15 @@ MODE* MDEBUG::loop(void) {
 	}
 
 	if (HAL_GetTick() < update_screen) return this;
-	update_screen = HAL_GetTick() + 500;
+	update_screen = HAL_GetTick() + 491;						// The screen update period is a primary number to update TIM1 counter value
 
 	uint16_t data[4];
 	data[2]		= pIron->ambientInternal();
 	if (gun_mode) {
 		data[0]		= pHG->averageTemp();
 		data[1]		= pHG->fanCurrent();
-		data[3]		= 0;
+		data[3]		= TIM1->CNT;								// TIM1 period is 99
+		if (isACsine()) data[3] += 100;							// Show flag indicating that AC events are detected
 	} else {
 		data[0]		= pIron->temp();
 		data[1] 	= pIron->ironCurrent();
