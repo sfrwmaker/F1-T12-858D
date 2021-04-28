@@ -59,3 +59,6 @@ June 03 2020. New firmaware release, 3.02.
   
   Feb 01 2021. Release 4.02.
   - Fixed controller hangs after Hot Air Gun cooled issue.
+  
+  Apr 28 2021. Release 4.03.
+  - Debug information about AC zero events added to the debug mode
