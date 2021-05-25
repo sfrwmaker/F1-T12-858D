@@ -20,6 +20,9 @@
 #include "stat.h"
 #include "hw.h"
 
+// Forward class declaration
+class MWORK_GUN;
+
 class MODE {
 	public:
 		MODE(HW *pCore)										{ this->pCore = pCore; 	}
@@ -28,13 +31,11 @@ class MODE {
 		virtual MODE*	loop(void)							{ return 0; }
 		virtual			~MODE(void)							{ }
 		void			ironMode(bool iron)					{ use_iron 	= iron; 	}
-		void			keepIronWorking(bool iw)			{ keep_iron = iw; 		}
 		MODE*			returnToMain(void);
 	protected:
 		void 			resetTimeout(void);
 		void 			setTimeout(uint16_t t);
-		bool			use_iron		= true;
-		bool			keep_iron		= false;			// Keep iron working while in Hot Air Gun mode
+		bool			use_iron		= true;				// Active 'tip': soldering iron or hot air gun
 		HW*				pCore			= 0;
 		uint16_t		timeout_secs	= 0;				// Timeout to return to main mode, seconds
 		uint32_t		time_to_return 	= 0;				// Time in ms when to return to the main mode
@@ -51,9 +52,9 @@ class MSTBY_IRON : public MODE {
 		MSTBY_IRON(HW *pCore) : MODE(pCore)					{ }
 		virtual void	init(void);
 		virtual MODE*	loop(void);
-		void			setGunMode(MODE* gw)				{ gun_work = gw; }
+		void			setGunMode(MWORK_GUN* gw)			{ gun_work = gw; }
 	private:
-		MODE*			gun_work		= 0;				// Hot Air Gun Work mode
+		MWORK_GUN*		gun_work		= 0;				// Hot Air Gun Work mode
 		uint32_t		clear_used_ms	= 0;				// Time in ms when used flag should be cleared (if > 0)
 		bool			used			= false;			// Whether the IRON was used (was hot)
 		bool			cool_notified	= 0;				// Whether there was cold notification played
@@ -67,13 +68,13 @@ class MWORK_IRON : public MODE {
 		MWORK_IRON(HW *pCore) : MODE(pCore), idle_pwr(ec)					{ }
 		virtual void	init(void);
 		virtual MODE*	loop(void);
-		void			setGunMode(MODE* gw)				{ gun_work = gw;		}
+		void			setGunMode(MWORK_GUN* gw)			{ gun_work = gw;		}
 		void			setLowPowerMode(MODE* lp)			{ low_power_mode = lp;	}
 	private:
 		void 			adjustPresetTemp(void);
 		bool			hwTimeout(bool tilt_active);
 		void 			swTimeout(uint16_t temp, uint16_t temp_set, uint16_t temp_setH, uint32_t td, uint32_t pd, uint16_t ap);
-		MODE*			gun_work		= 0;				// Hot Air Gun Standby mode
+		MWORK_GUN*		gun_work		= 0;				// Hot Air Gun Standby mode
 		MODE*			low_power_mode	= 0;				// Low power mode pointer
 		EMP_AVERAGE  	idle_pwr;							// Exponential average value for idle power
 		bool 			auto_off_notified = false;			// The time (in ms) when the automatic power-off was notified
@@ -296,6 +297,7 @@ class MWORK_GUN : public MODE, SCRSAVER {
 		void			setIronModes(MODE* is, MODE* iw)				{ iron_standby = is; iron_working = iw; }
 		virtual void	init(void);
 		virtual MODE*	loop(void);
+		void			keepIronWorking(bool iw)			{ keep_iron = iw; 		}
 	private:
 		MODE*			iron_standby	= 0;				// Standby IRON mode
 		MODE*			iron_working	= 0;				// Working IRON mode
@@ -306,6 +308,7 @@ class MWORK_GUN : public MODE, SCRSAVER {
 		uint32_t		ready_clear		= 0;				// Time when to clean 'Ready' message
 		uint32_t		fan_animate		= 0;				// Time when draw new fan animation
 		uint8_t			fan_angle		= 0;				// Current angle of fan icon [0..3]
+		bool			keep_iron		= false;			// Keep iron working while in Hot Air Gun mode
 		const uint16_t	edit_fan_timeout = 3000;			// The time to edit fan speed (ms)
 };
 
