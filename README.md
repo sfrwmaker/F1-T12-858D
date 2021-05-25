@@ -62,3 +62,7 @@ June 03 2020. New firmaware release, 3.02.
   
   Apr 28 2021. Release 4.03.
   - Debug information about AC zero events added to the debug mode
+  
+  May 25 2021. Release 4.04.
+  - New feature added. Now it is possible to manage soldering iron while in hot air gun mode. If the "keep iron" option is enabled in main menu, long-press the encoder toggles the soldering iron.
+ 
