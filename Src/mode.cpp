@@ -1754,7 +1754,16 @@ MODE* MWORK_GUN::loop(void) {
 		update_screen = 0;
     }
 
-    if (button) {											// The button was pressed, toggle temp/fan
+    if (pCFG->isKeepIron() && button == 2) {				// Manage soldering iron if keep_iron is enabled
+    	if (keep_iron) {									// Soldering iron is powered on. Turn-off the soldering iron
+    		pCore->iron.switchPower(false);
+    		pCore->buzz.lowBeep();
+    	} else {											// Turn the soldering iron ON
+    		pCore->iron.switchPower(true);
+    		pCore->buzz.shortBeep();
+    	}
+    	keep_iron = !keep_iron;
+    } else if (button) {									// The button was pressed, toggle temp/fan
     	update_screen = 0;
     	if (edit_temp) {									// Switch to edit fan speed
     		uint16_t fan = pHG->presetFan();
