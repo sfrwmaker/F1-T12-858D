@@ -451,12 +451,14 @@ void MBOOST::init(void) {
 	tempH			   += delta;
 	temp_set 			= pCFG->humanToTemp(tempH, ambient);
 	pIron->setTemp(temp_set);
-	pIron->fixPower(0xffff);								// Apply maximum value of fixed power
-	time_to_return		= HAL_GetTick() + 30000;
+	uint32_t duration	= pCFG->boostDuration();			// Boost duration time (sec)
+	pIron->fixPower(0xffff);								// Apply maximum value of fixed power, first phase
+	time_to_return		= HAL_GetTick() + duration * 1000;
 	pEnc->reset(0, 0, 1, 1, 1, false);
+	pCore->buzz.shortBeep();
 	old_pos				= 0;
 	update_screen		= 0;
-	heating				= true;
+	phase				= 0;								// Start first phase: heating supplying fixed amount of power
 }
 
 MODE* MBOOST::loop(void) {
@@ -472,12 +474,19 @@ MODE* MBOOST::loop(void) {
     	return mode_return;									// Return to the main mode if button pressed
     }
 
-    if (heating) {
+    if (phase == 0) {										// First phase, heating
     	uint16_t temp 		= pIron->averageTemp();
     	uint16_t temp_set	= pIron->presetTemp();
-    	if (temp_set <= temp) {								// Finish heating
-    		pIron->switchPower(true);						// Keep boos temperature
-    		heating = false;
+    	if (temp_set <= temp) {								// Start second phase, prevent overheating
+    		pIron->switchPower(true);						// Try to keep boost temperature
+    		phase = 1;
+    	}
+    } else if (phase == 1) {								// Second phase, cooling on automatic temperature mode
+    	uint16_t temp 		= pIron->averageTemp();
+    	uint16_t temp_set	= pIron->presetTemp();
+    	if (temp_set >= temp) {								// Start last phase, keep boost temperature
+    		pIron->switchPower(true);						// Reset PID
+    		phase = 2;
     	}
     }
 
@@ -645,6 +654,7 @@ void MMENU::init(void) {
 	keep_iron	= pCFG->isKeepIron();
 	reed		= pCFG->isReedType();
 	temp_step	= pCFG->isBigTempStep();
+	auto_start	= pCFG->isAutoStart();
 	scr_saver	= pCFG->getScrTo();
 	set_param	= 0;
 	if (!pCFG->isTipCalibrated())
@@ -665,24 +675,24 @@ MODE* MMENU::loop(void) {
 	if (mode_menu_item != item) {								// The encoder has been rotated
 		mode_menu_item = item;
 		switch (set_param) {									// Setup new value of the parameter in place
-			case 6:												// Setup auto off timeout
+			case 7:												// Setup auto off timeout
 				if (item) {
 					off_timeout	= item + 2;
 				} else {
 					off_timeout = 0;
 				}
 				break;
-			case 7:												// Setup low power (standby) temperature
+			case 8:												// Setup low power (standby) temperature
 				if (item >= min_standby_C) {
 					low_temp = item;
 				} else {
 					low_temp = 0;
 				}
 				break;
-			case 8:												// Setup low power (standby) timeout
+			case 9:												// Setup low power (standby) timeout
 				low_to	= item;
 				break;
-			case 9:												// Setup Screen saver timeout
+			case 10:											// Setup Screen saver timeout
 				if (item) {
 					scr_saver = item + 2;
 				} else {
@@ -700,7 +710,7 @@ MODE* MMENU::loop(void) {
 		if (button > 0) {										// The button was pressed, current menu item can be selected for modification
 			switch (item) {										// item is a menu item
 				case 0:											// Boost parameters
-					pCFG->setup(off_timeout, buzzer, celsius, keep_iron, reed, temp_step, low_temp, low_to, scr_saver);
+					pCFG->setup(off_timeout, buzzer, celsius, keep_iron, reed, temp_step, auto_start, low_temp, low_to, scr_saver);
 					return mode_menu_boost;
 				case 1:											// units C/F
 					celsius	= !celsius;
@@ -715,9 +725,12 @@ MODE* MMENU::loop(void) {
 					reed = !reed;
 					break;
 				case 5:											// Preset temperature step (1/5)
-					temp_step = !temp_step;
+					temp_step  = !temp_step;
 					break;
-				case 6:											// auto off timeout
+				case 6:											// Automatic startup ON/OFF
+					auto_start = !auto_start;
+					break;
+				case 7:											// auto off timeout
 					{
 					set_param = item;
 					uint8_t to = off_timeout;
@@ -725,7 +738,7 @@ MODE* MMENU::loop(void) {
 					pEnc->reset(to, 0, 28, 1, 1, false);
 					break;
 					}
-				case 7:											// Standby temperature
+				case 8:											// Standby temperature
 					{
 					set_param = item;
 					uint16_t max_standby_C = pCFG->referenceTemp(0);
@@ -733,11 +746,11 @@ MODE* MMENU::loop(void) {
 					pEnc->reset(low_temp, min_standby_C-1, max_standby_C, 1, 5, false);
 					break;
 					}
-				case 8:											// Standby timeout
+				case 9:											// Standby timeout
 					set_param = item;
 					pEnc->reset(low_to, 1, 255, 1, 1, false);
 					break;
-				case 9:											// Screen saver timeout
+				case 10:											// Screen saver timeout
 					{
 					set_param = item;
 					uint8_t to = scr_saver;
@@ -745,33 +758,33 @@ MODE* MMENU::loop(void) {
 					pEnc->reset(to, 0, 58, 1, 1, false);
 					break;
 					}
-				case 10:										// save
-					pCFG->setup(off_timeout, buzzer, celsius, keep_iron, reed, temp_step, low_temp, low_to, scr_saver);
+				case 11:										// save
+					pCFG->setup(off_timeout, buzzer, celsius, keep_iron, reed, temp_step, auto_start, low_temp, low_to, scr_saver);
 					pCFG->saveConfig();
 					pCore->buzz.activate(buzzer);
 					pCore->scrsaver.init(pCFG->getScrTo());		// Reload screen saver timeout
 					mode_menu_item = 0;
 					return mode_return;
-				case 12:										// calibrate IRON tip
+				case 13:										// calibrate IRON tip
 					mode_menu_item = 8;
 					return mode_calibrate_menu;
-				case 13:										// activate tips
+				case 14:										// activate tips
 					mode_menu_item = 0;							// We will not return from tip activation mode to this menu
 					return mode_activate_tips;
-				case 14:										// tune the IRON potentiometer
+				case 15:										// tune the IRON potentiometer
 					mode_menu_item = 0;							// We will not return from tune mode to this menu
 					mode_tune->ironMode(true);
 					return mode_tune;
-				case 15:										// Hot Air Gun menu
+				case 16:										// Hot Air Gun menu
 					mode_menu_item = 11;						// We will return from next level menu here
 					return mode_gun_menu;
-				case 16:										// Initialize the configuration
+				case 17:										// Initialize the configuration
 					pCFG->initConfigArea();
 					mode_menu_item = 0;							// We will not return from tune mode to this menu
 					return mode_return;
-				case 17:										// Tune PID
+				case 18:										// Tune PID
 					return mode_tune_pid;
-				case 18:										// About dialog
+				case 19:										// About dialog
 					mode_menu_item = 0;
 					return mode_about;
 				default:										// cancel
@@ -832,14 +845,17 @@ MODE* MMENU::loop(void) {
 		case 5:													// Preset temperature step (1/5)
 			sprintf(item_value, "%1d deg.", temp_step?5:1);
 			break;
-		case 6:													// auto off timeout
+		case 6:													// Auto start ON/OFF
+			sprintf(item_value, auto_start?"ON":"OFF");
+			break;
+		case 7:													// auto off timeout
 			if (off_timeout) {
 				sprintf(item_value, "%2d min", off_timeout);
 			} else {
 				sprintf(item_value, "OFF");
 			}
 			break;
-		case 7:													// Standby temperature
+		case 8:													// Standby temperature
 			if (low_temp) {
 				if (celsius) {
 					sprintf(item_value, "%3d C", low_temp);
@@ -850,7 +866,7 @@ MODE* MMENU::loop(void) {
 				sprintf(item_value, "OFF");
 			}
 			break;
-		case 8:													// Standby timeout (5 secs intervals)
+		case 9:													// Standby timeout (5 secs intervals)
 			if (low_temp) {
 				uint16_t to = (uint16_t)low_to * 5;				// Timeout in seconds
 				if (to < 60) {
@@ -864,7 +880,7 @@ MODE* MMENU::loop(void) {
 				sprintf(item_value, "OFF");
 			}
 			break;
-		case 9:
+		case 10:
 			if (scr_saver) {
 				sprintf(item_value, "%2d min", scr_saver);
 			} else {
@@ -1418,8 +1434,7 @@ MODE* MMBST::loop(void) {
 				case 1:											// duration
 					{
 					mode 	= 2;
-					uint8_t dur	= duration;
-					pEnc->reset(dur, 5, 80, 5, 5, false);
+					pEnc->reset(duration, 20, 320, 20, 20, false);
 					break;
 					}
 				case 2:											// save
@@ -1438,7 +1453,7 @@ MODE* MMBST::loop(void) {
 	}
 
 	// Show current menu item
-	char item_value[8];
+	char item_value[10];
 	item_value[1] = '\0';
 	if (mode) {
 		item = mode - 1;
@@ -1458,7 +1473,7 @@ MODE* MMBST::loop(void) {
 			}
 			break;
 		case 1:													// duration (secs)
-		    sprintf(item_value, "%2d s.", duration);
+		    sprintf(item_value, "%3d s.", duration);
 			break;
 		default:
 			item_value[0] = '\0';

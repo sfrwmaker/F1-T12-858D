@@ -30,7 +30,7 @@ CFG_STATUS CFG::init(void) {
 	tip_table = (TIP_TABLE*)malloc(sizeof(TIP_TABLE) * TIPS::loaded());
 	uint8_t tips_loaded = 0;
 
-	if (EEPROM::init()) {
+	if (EEPROM::init()) {									// True if EEPROM is writable
 		if (tip_table) {
 			tips_loaded = buildTipTable(tip_table);
 		}
@@ -49,7 +49,7 @@ CFG_STATUS CFG::init(void) {
 		} else {
 			return CFG_NO_TIP;
 		}
-	} else {
+	} else {												// EEPROM is not writable or is not ready
 		setDefaults();
 		TIP_CFG::defaultCalibration(0);						// 0 means Hot Air Gun
 		selectTip(1);
@@ -475,7 +475,7 @@ void CFG_CORE::correctConfig(RECORD *cfg) {
 }
 
 // Apply main configuration parameters: automatic off timeout, buzzer and temperature units
-void CFG_CORE::setup(uint8_t off_timeout, bool buzzer, bool celsius, bool keep_iron, bool reed, bool temp_step,
+void CFG_CORE::setup(uint8_t off_timeout, bool buzzer, bool celsius, bool keep_iron, bool reed, bool temp_step, bool auto_start,
 		uint16_t low_temp, uint8_t low_to, uint8_t scr_saver) {
 	bool cfg_celsius		= a_cfg.bit_mask & CFG_CELSIUS;
 	a_cfg.off_timeout		= off_timeout;
@@ -497,6 +497,7 @@ void CFG_CORE::setup(uint8_t off_timeout, bool buzzer, bool celsius, bool keep_i
 	if (keep_iron)	a_cfg.bit_mask |= CFG_KEEP_IRON;
 	if (reed)		a_cfg.bit_mask |= CFG_SWITCH;
 	if (temp_step)	a_cfg.bit_mask |= CFG_BIG_STEP;
+	if (auto_start) a_cfg.bit_mask |= CFG_AU_START;
 }
 
 void CFG_CORE::savePresetTempHuman(uint16_t temp_set) {
@@ -532,21 +533,21 @@ uint8_t	CFG_CORE::boostTemp(void){
 	return t * 5;
 }
 
-uint8_t	CFG_CORE::boostDuration(void) {
-	uint8_t d = a_cfg.boost & 0xF;
-	return (d+1)*5;
+uint16_t CFG_CORE::boostDuration(void) {
+	uint16_t d = a_cfg.boost & 0xF;
+	return (d+1)*20;
 }
 
 // Save boost parameters to the current configuration
-void CFG_CORE::saveBoost(uint8_t temp, uint8_t duration) {
+void CFG_CORE::saveBoost(uint8_t temp, uint16_t duration) {
 	if (temp > 75)		temp = 75;
-	if (duration > 80)	duration = 80;
+	if (duration > 320)	duration = 320;
 	if (duration < 5)   duration = 5;
 	temp += 4;
 	temp /= 5;
 	a_cfg.boost = temp << 4;
 	a_cfg.boost &= 0xF0;
-	a_cfg.boost |= ((duration-1)/5) & 0xF;
+	a_cfg.boost |= ((duration-1)/20) & 0xF;
 }
 
 // PID parameters: Kp, Ki, Kd

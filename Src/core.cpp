@@ -164,6 +164,8 @@ extern "C" void setup(void) {
 			pMode	= &fail;
 			break;
 		default:
+			if (core.cfg.isAutoStart())
+				pMode = &work_iron;
 			break;
 	}
 
