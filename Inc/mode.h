@@ -106,7 +106,7 @@ class MBOOST : public MODE {
 		virtual MODE*	loop(void);
 	private:
 		uint16_t 		old_pos 	  	= 0;
-		bool			heating			= false;
+		uint8_t			phase			= 0;				// 0 - heating, 1 - cooling, 2 - ready
 };
 
 //---------------------- The tip selection mode ----------------------------------
@@ -155,24 +155,26 @@ class MMENU : public MODE {
 		bool		keep_iron		= false;				// Keep the iron working While in Hot Air Gun Mode
 		bool		reed			= false;				// IRON switch type: reed/tilt
 		bool		temp_step		= false;				// The preset temperature step (1/5)
+		bool		auto_start		= false;				// Automatic power on iron at startup
 		uint8_t		set_param		= 0;					// The index of the modifying parameter
 		uint8_t		mode_menu_item 	= 1;					// Save active menu element index to return back later
 		// When new menu item added, the m_len, in_place_start, in_place_end, tip_calib_menu constants should be adjusted
 		uint8_t		m_len			= 19;					// The menu length
-		const char* menu_name[19] = {
+		const char* menu_name[20] = {
 			"boost setup",
 			"units",
 			"buzzer",
 			"keep iron",
 			"switch type",
 			"temp. step",
-			"auto off",										// #6 First parameter that can be modified in-place
+			"auto start",
+			"auto off",										// #7 First parameter that can be modified in-place
 			"standby temp",
 			"standby time",
-			"screen saver",									// #9 Last parameter that can be modified in-place
+			"screen saver",									// #10 Last parameter that can be modified in-place
 			"save",
 			"cancel",
-			"calibrate tip",								// #12 Menu item to start menu when the tip is not calibrated
+			"calibrate tip",								// #13 Menu item to start menu when the tip is not calibrated
 			"activate tips",
 			"tune iron",
 			"gun menu",
@@ -180,9 +182,9 @@ class MMENU : public MODE {
 			"tune iron PID",
 			"about"
 		};
-		const uint8_t	in_place_start	= 6;				// See the menu names. Index of the first parameter that can be changed inside menu
-		const uint8_t	in_place_end	= 9;				// See the menu names. Index of the last parameter that can be changed inside menu
-		const uint8_t	tip_calib_menu	= 12;				// See the menu names. Index of 'calibrate tip' menu
+		const uint8_t	in_place_start	= 7;				// See the menu names. Index of the first parameter that can be changed inside menu
+		const uint8_t	in_place_end	= 10;				// See the menu names. Index of the last parameter that can be changed inside menu
+		const uint8_t	tip_calib_menu	= 13;				// See the menu names. Index of 'calibrate tip' menu
 		const uint16_t	min_standby_C	= 120;				// Minimum standby temperature, Celsius
 };
 
@@ -251,7 +253,7 @@ class MMBST : public MODE {
 		virtual MODE*	loop(void);
 	private:
 		uint8_t			delta_temp	= 0;					// The temperature increment
-		uint8_t			duration	= 0;					// The boost period (secs)
+		uint16_t		duration	= 0;					// The boost period (secs)
 		uint8_t			mode		= 0;					// The current mode: 0: select menu item, 1 - change temp, 2 - change duration
 		uint8_t 		old_item 	= 0;
 		const char* boost_name[3] = {

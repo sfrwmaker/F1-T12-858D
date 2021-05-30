@@ -16,7 +16,7 @@
  * CFG_KEEP_IRON	- Is keep the iron working while in Hot Air Gun mode
  * CFG_SWITCH		- Switch type: Tilt (0) or REED (1)
  */
-typedef enum { CFG_CELSIUS = 1, CFG_BUZZER = 2, CFG_KEEP_IRON = 4, CFG_SWITCH = 8, CFG_BIG_STEP = 128 } CFG_BIT_MASK;
+typedef enum { CFG_CELSIUS = 1, CFG_BUZZER = 2, CFG_KEEP_IRON = 4, CFG_SWITCH = 8, CFG_AU_START = 16, CFG_BIG_STEP = 128 } CFG_BIT_MASK;
 
 /* Configuration record in the EEPROM (after the tip table) has the following format:
  * Records are aligned by 2**n bytes (in this case, 32 bytes)
@@ -25,10 +25,10 @@ typedef enum { CFG_CELSIUS = 1, CFG_BUZZER = 2, CFG_KEEP_IRON = 4, CFG_SWITCH = 
  * 0000 - disabled
  * 0001 - +4  degrees
  * 1111 - +75 degrees
- * The lower 4 bits is the boost time ((n+1)* 5 seconds), i.e.
- * 0000 -  5 seconds
- * 0001 - 10 seconds
- * 1111 - 80 seconds
+ * The lower 4 bits is the boost time ((n+1)* 20 seconds), i.e.
+ * 0000 -  20 seconds
+ * 0001 -  40 seconds
+ * 1111 - 320 seconds
  */
 typedef struct s_config RECORD;
 struct s_config {

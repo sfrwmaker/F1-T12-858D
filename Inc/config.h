@@ -31,6 +31,7 @@ class CFG_CORE: public TIPS {
 		bool		isKeepIron(void)					{ return a_cfg.bit_mask & CFG_KEEP_IRON;}
 		bool		isReedType(void)					{ return a_cfg.bit_mask & CFG_SWITCH;	}
 		bool		isBigTempStep(void)					{ return a_cfg.bit_mask & CFG_BIG_STEP;	}
+		bool		isAutoStart(void)					{ return a_cfg.bit_mask & CFG_AU_START;	}
 		uint16_t	tempPresetHuman(void) 				{ return a_cfg.iron_temp;				}
 		uint16_t	gunTempPreset(void)					{ return a_cfg.gun_temp;				}
 		uint16_t	gunFanPreset(void)					{ return a_cfg.gun_fan_speed;			}
@@ -38,13 +39,13 @@ class CFG_CORE: public TIPS {
 		uint16_t	getLowTemp(void)					{ return a_cfg.low_temp; 				}
 		uint8_t		getLowTO(void)						{ return a_cfg.low_to; 					}	// 5-seconds intervals
 		uint8_t		getScrTo(void)						{ return a_cfg.scr_save_timeout;		}
-		void		setup(uint8_t off_timeout, bool buzzer, bool celsius, bool keep_iron, bool reed, bool big_temp_step,
+		void		setup(uint8_t off_timeout, bool buzzer, bool celsius, bool keep_iron, bool reed, bool big_temp_step, bool auto_start,
 						uint16_t low_temp, uint8_t low_to, uint8_t scr_saver);
 		void 		savePresetTempHuman(uint16_t temp_set);
 		void		saveGunPreset(uint16_t temp, uint16_t fan = 0);
 		uint8_t		boostTemp(void);
-		uint8_t		boostDuration(void);
-		void		saveBoost(uint8_t temp, uint8_t duration);
+		uint16_t	boostDuration(void);
+		void		saveBoost(uint8_t temp, uint16_t duration);
 		void		restoreConfig(void);
 		PIDparam	pidParams(bool iron);
 		PIDparam 	pidParamsSmooth(bool iron = true);
