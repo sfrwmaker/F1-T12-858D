@@ -66,3 +66,6 @@ June 03 2020. New firmaware release, 3.02.
   May 25 2021. Release 4.04.
   - New feature added. Now it is possible to manage soldering iron while in hot air gun mode. If the "keep iron" option is enabled in main menu, long-press the encoder toggles the soldering iron.
  
+  May 30 2021. Release 4.05.
+  - Automatic startup mode implemented. The soldering iron would power-up when the power applied to the controller if mode activated.
+  - Boost mode updated. Now boost duration time can be increment by 20 seconds upto 320 seconds. Boost mode temperature now more stable.
