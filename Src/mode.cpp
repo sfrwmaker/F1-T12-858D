@@ -659,7 +659,7 @@ void MMENU::init(void) {
 	set_param	= 0;
 	if (!pCFG->isTipCalibrated())
 		mode_menu_item	= tip_calib_menu;						// Index of 'calibrate tip' menu item
-	pEnc->reset(mode_menu_item, 0, m_len-1, 1, 1, true);
+	pEnc->reset(mode_menu_item, 0, M_MENU_LENGTH-1, 1, 1, true);
 	update_screen = 0;
 }
 
@@ -798,7 +798,7 @@ MODE* MMENU::loop(void) {
 			item 			= set_param;
 			mode_menu_item 	= set_param;
 			set_param = 0;
-			pEnc->reset(mode_menu_item, 0, m_len-1, 1, 1, true);
+			pEnc->reset(mode_menu_item, 0, M_MENU_LENGTH-1, 1, 1, true);
 		}
 	}
 
