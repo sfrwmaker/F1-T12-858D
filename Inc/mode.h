@@ -133,6 +133,7 @@ class MTACT : public MODE {
 
 
 //---------------------- The Menu mode -------------------------------------------
+#define M_MENU_LENGTH	(20)
 class MMENU : public MODE {
 	public:
 		MMENU(HW* pCore, MODE* m_boost, MODE* m_calib, MODE* m_act, MODE* m_tune, MODE* m_pid, MODE* m_gun_menu, MODE *m_about);
@@ -159,8 +160,7 @@ class MMENU : public MODE {
 		uint8_t		set_param		= 0;					// The index of the modifying parameter
 		uint8_t		mode_menu_item 	= 1;					// Save active menu element index to return back later
 		// When new menu item added, the m_len, in_place_start, in_place_end, tip_calib_menu constants should be adjusted
-		uint8_t		m_len			= 19;					// The menu length
-		const char* menu_name[20] = {
+		const char* menu_name[M_MENU_LENGTH] = {
 			"boost setup",
 			"units",
 			"buzzer",
