@@ -72,3 +72,6 @@ June 03 2020. New firmaware release, 3.02.
 
   Jun 02 2021. Release 4.06
   - No "about" item menu bug fixed
+  
+  Sep 21 2021. Release 4.07
+  - Support for system clock checking procedure added. The controller checks its clock speed at startup. In case the ckock is lower than 72 MHz, the error message will be displayed. To return to the working mode long press the emcoder.
