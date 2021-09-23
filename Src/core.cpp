@@ -25,9 +25,7 @@ extern ADC_HandleTypeDef	hadc1;
 extern ADC_HandleTypeDef	hadc2;
 extern TIM_HandleTypeDef	htim1;
 extern TIM_HandleTypeDef	htim2;
-extern TIM_HandleTypeDef	htim3;
 extern TIM_HandleTypeDef	htim4;
-extern RTC_HandleTypeDef 	hrtc;
 
 typedef enum { ADC_IDLE, ADC_CURRENT, ADC_TEMP } t_ADC_mode;
 volatile static t_ADC_mode	adc_mode = ADC_IDLE;
@@ -35,8 +33,7 @@ volatile static uint16_t	buff[ADC_BUFF_SZ];
 volatile static	uint32_t	tim1_cntr	= 0;				// Previous value of TIM1 counter. Using to check the TIM1 value changing
 volatile static	bool		ac_sine		= false;			// Flag indicating that TIM1 is driven by AC power interrupts on AC_ZERO pin
 volatile static uint8_t		check_count	= 1;				// Decrement from check_period to zero by TIM2. When become zero, force to check the IRON connectivity
-volatile static bool		clock_ok	= true;				// Flag indicating the system clock is working at 72 MHz (see RTC_IRQHandler())
-
+volatile static bool		clock_ok	= true;				// Flag indicating the system clock is working at 72 MHz (see RTC_IRQHandler()
 const static uint16_t  		max_iron_pwm	= 1960;			// Max value should be less than TIM2.CHANNEL3 value by 20
 const static uint16_t  		max_gun_pwm		= 99;			// TIM1 period. Full power can be applied to the HOT GUN
 const static uint16_t		check_iron_pwm	= 1;			// This power should be applied to check the current through the IRON
@@ -174,10 +171,6 @@ extern "C" void setup(void) {
 
 	syncAC();												// Synchronize TIM2 timer to AC power
 	HAL_Delay(1000);										// Wait till hardware status updated
-	if (!clock_ok) {
-		core.dspl.errorMessage("Clock speed\nsetup failed");
-		pMode	= &fail;
-	}
 	pMode->init();
 }
 
@@ -320,11 +313,3 @@ extern "C" void EXTI0_IRQHandler(void) {
 	__HAL_GPIO_EXTI_CLEAR_IT(ENCODER_L_Pin);
 }
 
-extern "C" void RTC_IRQHandler(void) {
-	HAL_RTCEx_RTCIRQHandler(&hrtc);
-	if (TIM3->CNT < 30000)
-		clock_ok = false;									// Clock speed is less than 72 MHz
-	HAL_TIM_Base_Stop(&htim3);
-	HAL_RTC_DeactivateAlarm(&hrtc, RTC_ALARM_A);
-	HAL_RTC_DeInit(&hrtc);
-}
