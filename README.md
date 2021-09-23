@@ -75,3 +75,8 @@ June 03 2020. New firmaware release, 3.02.
   
   Sep 21 2021. Release 4.07
   - Support for system clock checking procedure added. The controller checks its clock speed at startup. In case the ckock is lower than 72 MHz, the error message will be displayed. To return to the working mode long press the encoder.
+  
+  Sep 22 2021. Revert to release 4.06
+  - The controller speed inialized correctly alwas, the speed test is not necessary.
+  - Some followers reported the new firmware does not work.
+  - Restore old source files, rebuild the project. Perhaps, the issue is about the flash limit of the stm32 microcontroller.
