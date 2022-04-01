@@ -100,26 +100,21 @@ void RENC::encoderIntr(void) {					// Interrupt function, called when the channe
 			s_up = (HAL_GPIO_ReadPin(s_port, s_pin) == GPIO_PIN_SET);
     	}
 	} else {
-		if (rpt > 0) {
-				uint8_t inc = increment;
-				if ((now_t - rpt) < over_press) {
-					if ((now_t - changed) < fast_timeout) inc = fast_increment;
-						changed = now_t;
-						if (s_up) pos -= inc; else pos += inc;
-						if (pos > max_pos) {
-							if (is_looped)
-								pos = min_pos;
-							else
-								pos = max_pos;
-						}
-						if (pos < min_pos) {
-							if (is_looped)
-								pos = max_pos;
-							else
-								pos = min_pos;
-						}
+			if (rpt > 0) {
+				if (s_up == (HAL_GPIO_ReadPin(s_port, s_pin) == GPIO_PIN_RESET)) {	// Secondary channel polarity has been changed
+					uint8_t inc = increment;
+					if ((now_t - rpt) < over_press) {
+						if ((now_t - changed) < fast_timeout) inc = fast_increment;
+							changed = now_t;
+							if (s_up) pos -= inc; else pos += inc;
+							if (pos > max_pos) {
+								pos = (is_looped)?min_pos:max_pos;
+							} else if (pos < min_pos) {
+								pos = (is_looped)?max_pos:min_pos;
+							}
+					}
 				}
 				rpt = 0;
+			}
 		}
-	}
 }

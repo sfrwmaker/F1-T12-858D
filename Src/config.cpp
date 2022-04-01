@@ -563,7 +563,7 @@ PIDparam CFG_CORE::pidParamsSmooth(bool iron) {
 	if (iron)
 		return PIDparam(575, 10, 200);
 	else
-		return PIDparam(150, 64, 50);
+		return PIDparam(200, 30, 50);
 }
 
 //---------------------- CORE_CFG class functions --------------------------------
