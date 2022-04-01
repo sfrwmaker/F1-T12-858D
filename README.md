@@ -80,3 +80,8 @@ June 03 2020. New firmaware release, 3.02.
   - The controller speed inialized correctly alwas, the speed test is not necessary.
   - Some followers reported the new firmware does not work.
   - Restore old source files, rebuild the project. Perhaps, the issue is about the flash limit of the stm32 microcontroller.
+ 
+ Apr 01 2022. Release 4.07
+ - Rotaruy encoder manager improved
+ - New PID parameters for the Hot Air Gun caliration procedure applied
+ - New TIP, T12-D32 added to the tip list
