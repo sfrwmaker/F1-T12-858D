@@ -104,7 +104,7 @@ void Error_Handler(void);
 #define BUZZER_Pin GPIO_PIN_9
 #define BUZZER_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
-#define FW_VERSION	("4.06")
+#define FW_VERSION	("4.07")
 
 /* USER CODE END Private defines */
 
