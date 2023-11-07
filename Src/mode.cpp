@@ -78,12 +78,12 @@ MODE* MSTBY_IRON::loop(void) {
     uint16_t temp_set_h = pEnc->read();
     uint8_t  button		= pEnc->buttonStatus();
 
-    if (gun_work && pHG->isGunReedOpen())	{				// The Reed switch is open, switch to Hot Air Gun mode
+    if (gun_work && pHG->isReedSwitch(true))	{			// The Reed switch is open, switch to Hot Air Gun mode
     	gun_work->keepIronWorking(false);					// Do not switch on the IRON
     	return gun_work;
     }
 	// if IRON is disconnected, activate Tip selection mode
-    if (!pIron->noAmbientSensor() && !pIron->isIronConnected() && isACsine())
+    if (!pIron->noAmbientSensor() && !pIron->isConnected() && isACsine())
     	return mode_return;
 
     // In the Screen saver mode, any rotary encoder change should be ignored
@@ -186,6 +186,7 @@ void MWORK_IRON::init(void) {
 	pD->mainInit();
 	pD->msgON();
 	pD->tip(pCFG->tipName());
+	idle_pwr.length(ec);
 	idle_pwr.reset();										// Initialize the history for power in idle state
 	auto_off_notified 	= false;
 	ready 				= false;
@@ -264,7 +265,7 @@ MODE* MWORK_IRON::loop(void) {
 	uint8_t  button		= pEnc->buttonStatus();
 
 	// Switch to Hot Air Gun mode when the Reed switch is open.
-	if (gun_work && pCore->hotgun.isGunReedOpen()) {
+	if (gun_work && pCore->hotgun.isReedSwitch(true)) {
 		gun_work->keepIronWorking(pCFG->isKeepIron());		// Keep IRON working if enabled
     	return gun_work;
 	}
@@ -318,7 +319,7 @@ MODE* MWORK_IRON::loop(void) {
 	bool low_power_enabled = pCFG->getLowTemp() > 0;
 	bool tilt_active = false;
 	if (low_power_enabled)									// If low power mode enabled, check tilt switch status
-		tilt_active = pIron->isIronTiltSwitch(pCFG->isReedType());	// True if iron was used
+		tilt_active = pIron->isReedSwitch(pCFG->isReedType());	// True if iron was used
 
 
 	// Check the IRON reaches the preset temperature
@@ -392,7 +393,7 @@ MODE* MLOW_POWER::loop(void) {
 	// Check all conditions to return to the main working mode
 	if (mode_spress) {										// Be paranoid
 		// Check if iron was used or Hot Air Gun activated
-		if (pIron->isIronTiltSwitch(pCFG->isReedType()) || pCore->hotgun.isGunReedOpen()) {
+		if (pIron->isReedSwitch(pCFG->isReedType()) || pCore->hotgun.isReedSwitch(true)) {
 			return mode_spress;								// Return to main working mode
 		}
 		// Check if rotary encoder pressed or rotated
@@ -546,7 +547,7 @@ MODE* MSLCT::loop(void) {
     	return mode_return;
     }
 
-	if (pIron->isIronConnected() || !isACsine()) {			// See core.cpp for isACsine()
+	if (pIron->isConnected() || !isACsine()) {				// See core.cpp for isACsine()
 		// Prevent bouncing event, when the IRON connection restored back too quickly.
 		if (tip_begin_select && (HAL_GetTick() - tip_begin_select) < 1000) {
 			return 0;
@@ -1276,11 +1277,11 @@ MODE* MCALIB_MANUAL::loop(void) {
 
 	int16_t ambient = pIron->ambientTemp();
     if (use_iron) {
-    	if (!pIron->isIronConnected()) {
+    	if (!pIron->isConnected()) {
     		restorePIDconfig(pCFG, pIron, pHG);
     		return 0;
     	}
-	} else if (temp_setready_ms && (HAL_GetTick() > temp_setready_ms) && !pHG->isGunConnected()) {
+	} else if (temp_setready_ms && (HAL_GetTick() > temp_setready_ms) && !pHG->isConnected()) {
 		restorePIDconfig(pCFG, pIron, pHG);
 		return 0;
 	}
@@ -1519,10 +1520,10 @@ MODE* MTUNE::loop(void) {
     	check_connected = HAL_GetTick() >= check_delay;
     } else {
     	if (use_iron) {
-    		if (!pIron->isIronConnected())
+    		if (!pIron->isConnected())
     			return 0;
     	} else {
-    		if (pHG->isFanWorking() && !pHG->isGunConnected())
+    		if (pHG->isFanWorking() && !pHG->isConnected())
     				return 0;
     	}
     }
@@ -1599,9 +1600,9 @@ MODE* MTPID::loop(void) {
 	uint8_t  button		= pEnc->buttonStatus();
 
     if (use_iron) {
-    	if (!pIron->isIronConnected())
+    	if (!pIron->isConnected())
     		return 0;
-	} else if (temp_setready_ms && (HAL_GetTick() > temp_setready_ms) && !pHG->isGunConnected())
+	} else if (temp_setready_ms && (HAL_GetTick() > temp_setready_ms) && !pHG->isConnected())
 		return 0;
 
 	if(button || old_index != index)
@@ -1751,7 +1752,7 @@ MODE* MWORK_GUN::loop(void) {
     uint16_t param 		= pEnc->read();
     uint8_t  button		= pEnc->buttonStatus();
 
-    if (iron_standby && !pHG->isGunReedOpen()) {			// If the REED switch is closed, return to iron standby mode
+    if (iron_standby && !pHG->isReedSwitch(true)) {			// If the REED switch is closed, return to iron standby mode
     	pCFG->saveConfig();									// Save configuration into EEPROM
     	pCFG->activateGun(false);							// Load the current tip calibration data
     	if (keep_iron && iron_working) {
@@ -1814,7 +1815,7 @@ MODE* MWORK_GUN::loop(void) {
     }
     if (scr_saver_reset) SCRSAVER::reset();
 
-	if (fan_animate && HAL_GetTick() >= fan_animate && pHG->isGunConnected()) {
+	if (fan_animate && HAL_GetTick() >= fan_animate && pHG->isConnected()) {
 		pD->animateFan(fan_angle);
 		++fan_angle;
 		fan_angle &= 0x3;
@@ -1981,7 +1982,7 @@ MODE* MDEBUG::loop(void) {
 	IRON*	pIron	= &pCore->iron;
 	HOTGUN*	pHG		= &pCore->hotgun;
 
-	bool gun_active = pHG->isGunReedOpen();
+	bool gun_active = pHG->isReedSwitch(true);
 	if (gun_active != gun_mode) {								// Current Mode has been changed
 		gun_mode = gun_active;
 		pIron->fixPower(0);
@@ -2016,15 +2017,15 @@ MODE* MDEBUG::loop(void) {
 	data[2]		= pIron->ambientInternal();
 	if (gun_mode) {
 		data[0]		= pHG->averageTemp();
-		data[1]		= pHG->fanCurrent();
+		data[1]		= pHG->unitCurrent();
 		data[3]		= TIM1->CNT;								// TIM1 period is 99
 		if (isACsine()) data[3] += 100;							// Show flag indicating that AC events are detected
 	} else {
 		data[0]		= pIron->temp();
-		data[1] 	= pIron->ironCurrent();
-		data[3]		= pIron->tiltInternal();
+		data[1] 	= pIron->unitCurrent();
+		data[3]		= pIron->reedInternal();
 	}
-	pD->debugShow(gun_mode, pwr, pIron->isIronConnected(), pHG->isGunConnected(), data);
+	pD->debugShow(gun_mode, pwr, pIron->isConnected(), pHG->isConnected(), data);
 	return this;
 }
 

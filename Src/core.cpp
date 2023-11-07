@@ -38,6 +38,7 @@ const static uint16_t  		max_iron_pwm	= 1960;			// Max value should be less than
 const static uint16_t  		max_gun_pwm		= 99;			// TIM1 period. Full power can be applied to the HOT GUN
 const static uint16_t		check_iron_pwm	= 1;			// This power should be applied to check the current through the IRON
 const static uint8_t		check_period	= 6;			// TIM2 loops between check current through the iron
+const static	uint32_t	check_sw_period = 100;			// IRON switches check period, ms
 
 static HW		core;										// Hardware core (including all device instances)
 
@@ -176,9 +177,17 @@ extern "C" void setup(void) {
 
 
 extern "C" void loop(void) {
-	static uint32_t AC_check_time = 0;						// Time in ms when to check TIM1 is running
-	core.iron.checkSWStatus();								// Check status of IRON tilt switches
-	core.hotgun.checkSWStatus();							// Check status of Gun Reed and Mode switches
+	static uint32_t AC_check_time	= 0;					// Time in ms when to check TIM1 is running
+	static uint32_t	check_sw		= 0;					// Time when check iron switches status (ms)
+
+	if (HAL_GetTick() > check_sw) {
+		check_sw = HAL_GetTick() + check_sw_period;
+		GPIO_PinState pin = HAL_GPIO_ReadPin(TILT_SW_GPIO_Port, TILT_SW_Pin);
+		core.iron.updateReedStatus(GPIO_PIN_SET == pin);		// Update T12 TILT switch status
+		pin = HAL_GPIO_ReadPin(GUN_REED_GPIO_Port, GUN_REED_Pin);
+		core.hotgun.updateReedStatus(GPIO_PIN_SET == pin);	// Switch active when the Hot Air Gun handle is off-hook
+	}
+
 	MODE* new_mode = pMode->returnToMain();
 	if (new_mode && new_mode != pMode) {
 		core.buzz.doubleBeep();
@@ -276,7 +285,7 @@ extern "C" void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 			check_count	= check_period;
 			min_iron_pwm = check_iron_pwm;
 		}
-		if (core.iron.isIronConnected()) {
+		if (core.iron.isConnected()) {
 			uint16_t iron_power = core.iron.power(iron_temp);
 			TIM2->CCR1	= constrain(iron_power, min_iron_pwm, max_iron_pwm);
 
@@ -297,9 +306,9 @@ extern "C" void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 		fan_curr	/= ADC_LOOPS;
 
 		if (TIM2->CCR1)										// If IRON has been powered
-			core.iron.updateIronCurrent(iron_curr);
+			core.iron.updateCurrent(iron_curr);
 		if (TIM2->CCR2)										// If Hot Air Gun Fan has been powered
-			core.hotgun.updateFanCurrent(fan_curr);
+			core.hotgun.updateCurrent(fan_curr);
 	}
 	adc_mode = ADC_IDLE;
 }

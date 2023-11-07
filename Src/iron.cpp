@@ -9,73 +9,22 @@
 #include "iron.h"
 #include "tools.h"
 
-void IRON_HW::init(void) {
-	t_iron_short.length(iron_emp_coeff);
-	t_amb.length(ambient_emp_coeff);
-	c_iron.init(iron_sw_len,	iron_off_value,	iron_on_value);
-	sw_iron.init(sw_tilt_len,	sw_off_value, 	sw_on_value);
-}
-
-/*
- * Return ambient temperature in Celsius
- * Caches previous result to skip expensive calculations
- */
-int32_t	IRON_HW::ambientTemp(void) {
-static const uint16_t add_resistor	= 10000;				// The additional resistor value (10koHm)
-static const float 	  normal_temp[2]= { 10000, 25 };		// nominal resistance and the nominal temperature
-static const uint16_t beta 			= 3950;     			// The beta coefficient of the thermistor (usually 3000-4000)
-static int32_t	average 			= 0;					// Previous value of analog read
-static int 		cached_ambient 		= 0;					// Previous value of the temperature
-
-	if (!c_iron.status()) return default_ambient;			// If IRON is not connected, return default ambient temperature
-	if (abs(t_amb.read() - average) < 20)
-		return cached_ambient;
-
-	average = t_amb.read();
-
-	if (average < max_ambient_value) {						// prevent division by zero; About -30 degrees
-		// convert the value to resistance
-		float resistance = 4095.0 / (float)average - 1.0;
-		resistance = (float)add_resistor / resistance;
-
-		float steinhart = resistance / normal_temp[0];		// (R/Ro)
-		steinhart = log(steinhart);							// ln(R/Ro)
-		steinhart /= beta;									// 1/B * ln(R/Ro)
-		steinhart += 1.0 / (normal_temp[1] + 273.15);  		// + (1/To)
-		steinhart = 1.0 / steinhart;						// Invert
-		steinhart -= 273.15;								// convert to Celsius
-		cached_ambient	= round(steinhart);
-	} else {
-		cached_ambient	= default_ambient;
-	}
-	return cached_ambient;
-}
-
-void IRON_HW::checkSWStatus(void) {
-	if (HAL_GetTick() > check_sw) {
-		check_sw = HAL_GetTick() + check_sw_period;
-		uint16_t on = 0;									// 0 - short, 100 - open
-		if (GPIO_PIN_SET == HAL_GPIO_ReadPin(TILT_SW_GPIO_Port, TILT_SW_Pin))	on = 100;
-		sw_iron.update(on);									// Calculate current switch status and update the changed flag
-	}
-}
-
-bool IRON_HW::isIronTiltSwitch(bool reed) {
-	if (reed)
-		return sw_iron.status();							// TRUE if switch is open (IRON in use)
-	return sw_iron.changed();								// TRUE if tilt status has been changed
-}
-
 void IRON::init(void) {
 	mode		= POWER_OFF;
 	fix_power	= 0;
 	chill		= false;
-	IRON_HW::init();
+	UNIT::init(iron_sw_len, iron_off_value,	iron_on_value,   sw_tilt_len, sw_off_value, sw_on_value);
+	t_iron_short.length(iron_emp_coeff);
+	t_amb.length(ambient_emp_coeff);
 	h_power.length(ec);
 	h_temp.length(ec);
 	d_power.length(ec);
 	d_temp.length(ec);
-	PID::init();											// Initialize PID for IRON
+	// The IRON is powered by TIM2, calculate the TIM2 period in ms
+	uint32_t tim2_period = (TIM2->PSC + 1) * (TIM2->ARR + 1);
+	uint32_t cpu_speed = SystemCoreClock / 1000;			// Calculate TIM2 period in ms
+	tim2_period /= cpu_speed;
+	PID::init(tim2_period, 11, true);						// Initialize PID for IRON
 	resetPID();
 }
 
@@ -92,13 +41,6 @@ void IRON::switchPower(bool On) {
 	h_power.reset();
 	d_power.reset();
 	temp_low	= 0;
-}
-
-void IRON::autoTunePID(uint16_t base_pwr, uint16_t delta_power, uint16_t base_temp, uint16_t temp) {
-	mode = POWER_PID_TUNE;
-	h_power.reset();
-	d_power.reset();
-	PIDTUNE::start(base_pwr,delta_power, base_temp, temp);
 }
 
 uint16_t IRON::alternateTemp(void) {
@@ -158,6 +100,7 @@ void IRON::adjust(uint16_t t) {
 	temp_set = t;
 }
 
+// Called from HAL_ADC_ConvCpltCallback() event handler. See core.cpp for details.
 uint16_t IRON::power(int32_t t) {
 	t				= tempShortAverage(t);					// Prevent temperature deviation using short term history average
 	temp_curr		= t;
@@ -226,4 +169,39 @@ void IRON::lowPowerMode(uint16_t t) {
     	h_power.reset();
     	d_power.reset();
     }
+}
+
+/*
+ * Return ambient temperature in Celsius
+ * Caches previous result to skip expensive calculations
+ */
+int32_t	IRON::ambientTemp(void) {
+static const uint16_t add_resistor	= 10000;				// The additional resistor value (10koHm)
+static const float 	  normal_temp[2]= { 10000, 25 };		// nominal resistance and the nominal temperature
+static const uint16_t beta 			= 3950;     			// The beta coefficient of the thermistor (usually 3000-4000)
+static int32_t	average 			= 0;					// Previous value of analog read
+static int 		cached_ambient 		= 0;					// Previous value of the temperature
+
+	if (!isConnected()) return default_ambient;				// If IRON is not connected, return default ambient temperature
+	if (abs(t_amb.read() - average) < 20)
+		return cached_ambient;
+
+	average = t_amb.read();
+
+	if (average < max_ambient_value) {						// prevent division by zero; About -30 degrees
+		// convert the value to resistance
+		float resistance = 4095.0 / (float)average - 1.0;
+		resistance = (float)add_resistor / resistance;
+
+		float steinhart = resistance / normal_temp[0];		// (R/Ro)
+		steinhart = log(steinhart);							// ln(R/Ro)
+		steinhart /= beta;									// 1/B * ln(R/Ro)
+		steinhart += 1.0 / (normal_temp[1] + 273.15);  		// + (1/To)
+		steinhart = 1.0 / steinhart;						// Invert
+		steinhart -= 273.15;								// convert to Celsius
+		cached_ambient	= round(steinhart);
+	} else {
+		cached_ambient	= default_ambient;
+	}
+	return cached_ambient;
 }

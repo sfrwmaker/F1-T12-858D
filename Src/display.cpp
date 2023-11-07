@@ -924,6 +924,6 @@ void DSPL::showVersion(void) {
 	// Print date of compilation
 	sprintf(buff, "%s", __DATE__);
 	width	= U8G2::getStrWidth(buff);
-	U8G2::drawStr((d_width-width)/2, 63, buff);
+	U8G2::drawStr((d_width-width)/2, 61, buff);
 	U8G2::sendBuffer();
 }
