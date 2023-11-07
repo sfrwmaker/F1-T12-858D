@@ -1,7 +1,7 @@
 /*
  * core.h
  *
- *  Created on: 16 рту. 2019 у.
+ *  Created on: 16 sep 2019
  *      Author: Alex
  */
 

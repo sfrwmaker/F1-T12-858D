@@ -56,9 +56,9 @@ class DSPL : public U8G2 {
 		void 		debugShow(bool gun_mode, uint16_t power, bool iron, bool gun, uint16_t data[4]);
 		void 		showVersion(void);
 	private:
-		char      	msg_buff[8]			= {0};             // the buffer for the message in top right corner
-		char      	tip_name[10]		= {0};             // the buffer for tip name
-		char		err_msg[40]			= {0};			   // the buffer of error message
+		char      	msg_buff[8]			= {0};             	// the buffer for the message in top right corner
+		char      	tip_name[10]		= {0};				// the buffer for tip name
+		char		err_msg[40]			= {0};			   	// the buffer of error message
 		// PID tune data
 		uint32_t	default_mode = 0;						// The time in ms to return to the default mode
 		char		modified_value[25]	= {0};				// The buffer to show current value of being modified coefficient

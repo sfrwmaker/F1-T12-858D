@@ -1,7 +1,7 @@
 /*
  * pid.h
  *
- *  Created on: 13 àâã. 2019 ã.
+ *  Created on: 13 ï¿½ï¿½ï¿½. 2019 ï¿½.
  *      Author: Alex
  */
 
@@ -21,6 +21,7 @@ class PIDparam {
 		int32_t	Kd					= 0;
 };
 
+
 /*  The PID algorithm 
  *  Un = Kp*(Xs - Xn) + Ki*summ{j=0; j<=n}(Xs - Xj) + Kd(Xn - Xn-1),
  *  Where Xs - is the setup temperature, Xn - the temperature on n-iteration step
@@ -35,22 +36,26 @@ class PID {
 	public:
 		PID(void) 											{ }
 		void		load(const PIDparam &p);
-		PIDparam	dump(void)								{ return PIDparam(Kp, Ki, Kd);	}
-		void		init(uint8_t denominator_p = 11);
-		void 		resetPID(void);        					// reset PID algorithm history parameters
+		PIDparam	dump(void)								{ return PIDparam(Kp, Ki, Kd);			}
+		void		pidStable(int32_t power)				{ this->power = power;					}
+		void		init(uint16_t ms, uint8_t denominator_p = 11, bool heat_force = true);
+		void 		resetPID(uint16_t t = 0);        		// reset PID algorithm history parameters
 		int32_t 	reqPower(int16_t temp_set, int16_t temp_curr);
 		int32_t  	changePID(uint8_t p, int32_t k);    	// set or get (if parameter < 0) PID parameter
 		void		newPIDparams(uint16_t delta_power, uint32_t diff, uint32_t period);
 	private:
 		void  		debugPID(int t_set, int t_curr, long kp, long ki, long kd, long delta_p);
+		uint32_t 	T 				= 20;					// Check IRON or Hot Air Gun period, ms (to calculate auto PID parameters)
 		int16_t   	temp_h0			= 0;					// previously measured temperatures
 		int16_t	  	temp_h1			= 0;
-		int32_t  	i_summ			= 0;					// Ki summary multiplied by denominator
 		int32_t  	power			= 0;					// The power iterative multiplied by denominator
 		int32_t  	Kp 				= 10;					// The PID coefficients multiplied by denominator.
 		int32_t     Ki 				= 10;
 		int32_t		Kd				= 0;
+		int32_t		Kp_force		= 10;					// Kp * 5
+		int32_t		Ki_force		= 5;					// Ki / 10
 		int16_t  	denominator_p	= 11;              		// The common coefficient denominator power of 2 (11 means 2048)
+		bool		use_force		= true;					// Flag indicating to use forcibly heating mode
 };
 
 class PIDTUNE {
@@ -62,6 +67,7 @@ class PIDTUNE {
 		uint32_t	autoTunePeriod(void)					{ return period.read();					}
 		uint16_t	tempMin(void)							{ return temp_min.read();   			}
 		uint16_t	tempMax(void)							{ return temp_max.read();   			}
+		bool		periodStable(void);
 	private:
 		HIST		period;									// Average value of relay method oscillations period
 		HIST		temp_max;								// Average value of maximum temperature

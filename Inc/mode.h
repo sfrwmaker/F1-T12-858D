@@ -65,7 +65,7 @@ class MSTBY_IRON : public MODE {
 //-------------------- The iron main working mode, keep the temperature ----------
 class MWORK_IRON : public MODE {
 	public:
-		MWORK_IRON(HW *pCore) : MODE(pCore), idle_pwr(ec)					{ }
+		MWORK_IRON(HW *pCore) : MODE(pCore)					{ }
 		virtual void	init(void);
 		virtual MODE*	loop(void);
 		void			setGunMode(MWORK_GUN* gw)			{ gun_work = gw;		}

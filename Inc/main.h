@@ -103,8 +103,9 @@ void Error_Handler(void);
 #define TILT_SW_GPIO_Port GPIOB
 #define BUZZER_Pin GPIO_PIN_9
 #define BUZZER_GPIO_Port GPIOB
+
 /* USER CODE BEGIN Private defines */
-#define FW_VERSION	("4.07")
+#define FW_VERSION	("4.08")
 
 /* USER CODE END Private defines */
 
@@ -113,5 +114,3 @@ void Error_Handler(void);
 #endif
 
 #endif /* __MAIN_H */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
