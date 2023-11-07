@@ -85,3 +85,8 @@ June 03 2020. New firmaware release, 3.02.
  - Rotaruy encoder manager improved
  - New PID parameters for the Hot Air Gun caliration procedure applied
  - New TIP, T12-D32 added to the tip list
+
+ Nov 07 2023. Release 4.08
+ - Implemented new PID algorithm, trying to prevent overheation the soldering iron during heating up.
+ - Faster heat-up procedure of soldering iron.
+ - New manage procedure for Hot Air Gun imported from my recent project of soldering station with JBC tips.
