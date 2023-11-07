@@ -87,6 +87,7 @@ June 03 2020. New firmaware release, 3.02.
  - New TIP, T12-D32 added to the tip list
 
  Nov 07 2023. Release 4.08
+ - The CubeMX file and project are mirgated to STM32CubeIDE.
  - Implemented new PID algorithm, trying to prevent overheating the soldering iron during heating up.
  - Faster heat-up procedure of soldering iron.
  - New manage procedure for Hot Air Gun imported from my recent project of soldering station with JBC tips.
